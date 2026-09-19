@@ -1,0 +1,755 @@
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F358	EBX: 0x036D8B80	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x0288A5E0	EBP: 0x0019F368	ESP: 0x0019F340
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x0288A5E0   0x0288A5E0   0x036D8B80   0xFFFFFFFF
++0010: 0x0019F340   0x0019ED84   0x0019FB2C   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x036DC378   0x004056CD
++0030: 0x00000000   0x004010B6   0x0288A5E0   0x037E2A0C
++0040: 0x036F1494   0x00402B63   0x0288A5E0   0x0000000A
++0050: 0x0019F3A8   0x037E2A0C   0x0019F844   0x00000001
++0060: 0x037E2EDC   0x0288A5E0   0x00000000   0x000F1574
++0070: 0x000F1578   0x000F1A3C   0x000B1B70   0x000F1584
++0080: 0x000B1B74   0x036D8B80   0x036F1494   0x00000000
++0090: 0x036D8020   0x00018914   0x004746BE   0x0288A5E0
++00A0: 0x0019F834   0x0000001F   0x30312031   0x20303030
++00B0: 0x00470035   0x00007369   0x5F646D63   0x7270616E
++00C0: 0x6B697661   0x00756375   0x0288A5E0   0x0288A5E0
++00D0: 0x036D8B80   0x000B1B48   0x00000000   0x00000000
++00E0: 0x00000000   0x00000000   0x00000000   0x00000000
++00F0: 0x00000000   0x00000000   0x00000000   0x00000000
++0100: 0x00000000   0x00000000   0x00000000   0x00000000
++0110: 0x00000000   0x00000000   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x00001000   0x022D0000   0xFFFFFD69
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+ws2_32.DLL	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\ws2_32.DLL)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+VCRUNTIME140.dll	A: 0x5CD70000 - 0x5CD85000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+MSVCP140.dll	A: 0x5CD90000 - 0x5CDFD000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F358	EBX: 0x0373ABD0	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x0290A5E0	EBP: 0x0019F368	ESP: 0x0019F340
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x0290A5E0   0x0290A5E0   0x0373ABD0   0xFFFFFFFF
++0010: 0x0019F340   0x0019ED84   0x0019FB2C   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x0373E3C8   0x004056CD
++0030: 0x00000000   0x004010B6   0x0290A5E0   0x03844FA4
++0040: 0x037537BC   0x00402B63   0x0290A5E0   0x0000000A
++0050: 0x0019F3A8   0x03844FA4   0x0019F844   0x00000001
++0060: 0x03845474   0x0290A5E0   0x00000000   0x000F17E4
++0070: 0x000F17E8   0x000F1CAC   0x000B1DD8   0x000F17F4
++0080: 0x000B1DDC   0x0373ABD0   0x037537BC   0x00000000
++0090: 0x0373A020   0x00018BEC   0x004746BE   0x0290A5E0
++00A0: 0x0019F834   0x00000020   0x30352031   0x37203030
++00B0: 0x00474600   0x00007369   0x5F646D63   0x7270616E
++00C0: 0x6B697661   0x00756375   0x0290A5E0   0x0290A5E0
++00D0: 0x0373ABD0   0x000B1DB4   0x00000000   0x00000000
++00E0: 0x00000000   0x00000000   0x00000000   0x00000000
++00F0: 0x00000000   0x00000000   0x00000000   0x00000000
++0100: 0x00000000   0x00000000   0x00000000   0x00000000
++0110: 0x00000000   0x00000000   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x00001000   0x02430000   0xFFFFFD69
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+ws2_32.DLL	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\ws2_32.DLL)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+MSVCP140.dll	A: 0x5CD90000 - 0x5CDFD000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+VCRUNTIME140.dll	A: 0x5CD70000 - 0x5CD85000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F358	EBX: 0x036CFBD0	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x0283A5E0	EBP: 0x0019F368	ESP: 0x0019F340
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x0283A5E0   0x0283A5E0   0x036CFBD0   0xFFFFFFFF
++0010: 0x0019F340   0x0019ED84   0x0019FB2C   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x036D33C8   0x004056CD
++0030: 0x00000000   0x004010B6   0x0283A5E0   0x037D9FA4
++0040: 0x036E87BC   0x00402B63   0x0283A5E0   0x0000000A
++0050: 0x0019F3A8   0x037D9FA4   0x0019F844   0x00000001
++0060: 0x037DA474   0x0283A5E0   0x00000000   0x000F17E4
++0070: 0x000F17E8   0x000F1CAC   0x000B1DD8   0x000F17F4
++0080: 0x000B1DDC   0x036CFBD0   0x036E87BC   0x00000000
++0090: 0x036CF020   0x00018BEC   0x004746BE   0x0283A5E0
++00A0: 0x0019F834   0x00000020   0x30352031   0x35203030
++00B0: 0x00474600   0x00007369   0x5F646D63   0x7270616E
++00C0: 0x6B697661   0x00756375   0x0283A5E0   0x0283A5E0
++00D0: 0x036CFBD0   0x000B1DB4   0x00000000   0x00000000
++00E0: 0x00000000   0x00000000   0x00000000   0x00000000
++00F0: 0x00000000   0x00000000   0x00000000   0x00000000
++0100: 0x00000000   0x00000000   0x00000000   0x00000000
++0110: 0x00000000   0x00000000   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x00000000   0x00000000   0xFFFFFCE8
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+ws2_32.DLL	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\ws2_32.DLL)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+MSVCP140.dll	A: 0x5CD90000 - 0x5CDFD000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+VCRUNTIME140.dll	A: 0x5CD70000 - 0x5CD85000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F358	EBX: 0x03742BD0	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x0290A5E0	EBP: 0x0019F368	ESP: 0x0019F340
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x0290A5E0   0x0290A5E0   0x03742BD0   0xFFFFFFFF
++0010: 0x0019F340   0x0019ED84   0x0019FB2C   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x037463C8   0x004056CD
++0030: 0x00000000   0x004010B6   0x0290A5E0   0x0384CFA4
++0040: 0x0375B7BC   0x00402B63   0x0290A5E0   0x0000000A
++0050: 0x0019F3A8   0x0384CFA4   0x0019F844   0x00000001
++0060: 0x0384D474   0x0290A5E0   0x00000000   0x000F17E4
++0070: 0x000F17E8   0x000F1CAC   0x000B1DD8   0x000F17F4
++0080: 0x000B1DDC   0x03742BD0   0x0375B7BC   0x00000000
++0090: 0x03742020   0x00018BEC   0x004746BE   0x0290A5E0
++00A0: 0x0019F834   0x00000020   0x30352031   0x38203030
++00B0: 0x00474600   0x00007369   0x5F646D63   0x7270616E
++00C0: 0x6B697661   0x00756375   0x0290A5E0   0x0290A5E0
++00D0: 0x03742BD0   0x000B1DB4   0x00000000   0x00000000
++00E0: 0x00000000   0x00000000   0x00000000   0x00000000
++00F0: 0x00000000   0x00000000   0x00000000   0x00000000
++0100: 0x00000000   0x00000000   0x00000000   0x00000000
++0110: 0x00000000   0x00000000   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x00000800   0x02300000   0xFFFFFCE8
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+ws2_32.DLL	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\ws2_32.DLL)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+VCRUNTIME140.dll	A: 0x5CDA0000 - 0x5CDB5000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+MSVCP140.dll	A: 0x57990000 - 0x579FD000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F334	EBX: 0x0371B05C	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x028EA6B0	EBP: 0x0019F344	ESP: 0x0019F31C
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x028EA6B0   0x028EA6B0   0x0371B05C   0xFFFFFFFF
++0010: 0x0019F31C   0x0019ED5C   0x0019FB2C   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x03724124   0x004056CD
++0030: 0x00000000   0x004010B6   0x028EA6B0   0x0386C8B4
++0040: 0x037455A4   0x00402B63   0x028EA6B0   0x0000000C
++0050: 0x0019F384   0x0386C8B4   0x0019F3D0   0x028EA6B0
++0060: 0x00000034   0x00000002   0x00000000   0x0012730C
++0070: 0x00127310   0x00127350   0x000E744C   0x0012731C
++0080: 0x000E7450   0x0371B05C   0x037455A4   0x00000000
++0090: 0x0371A020   0x0002A548   0x5CDAF428   0x028EA6B0
++00A0: 0x0019F82C   0x00000034   0x0386C900   0x00000001
++00B0: 0x028EA6B0   0x0019F83C   0x004746BE   0x00000002
++00C0: 0x0019F82C   0x00000034   0x00470001   0x00007369
++00D0: 0x5F646D63   0x7270616E   0x67697661   0x74616769
++00E0: 0x006E6F72   0x028EA6B0   0x037455A4   0x00000001
++00F0: 0x000E7444   0x00000000   0x00000000   0x00000000
++0100: 0x00000000   0x00000000   0x00000000   0x00000000
++0110: 0x00000000   0x00000000   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x0000001E   0x02010002   0x02360270
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+ws2_32.DLL	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\ws2_32.DLL)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+MSVCP140.dll	A: 0x5C670000 - 0x5C706000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+VCRUNTIME140.dll	A: 0x5CDE0000 - 0x5CDFD000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+streamer.dll	A: 0x5CD70000 - 0x5CDD6000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\streamer.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F334	EBX: 0x0368905C	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x0281A6B0	EBP: 0x0019F344	ESP: 0x0019F31C
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x0281A6B0   0x0281A6B0   0x0368905C   0xFFFFFFFF
++0010: 0x0019F31C   0x0019ED5C   0x0019FB2C   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x03692124   0x004056CD
++0030: 0x00000000   0x004010B6   0x0281A6B0   0x037DA814
++0040: 0x036B35A4   0x00402B63   0x0281A6B0   0x0000000C
++0050: 0x0019F384   0x037DA814   0x0019F3D0   0x0281A6B0
++0060: 0x00000034   0x00000002   0x00000000   0x0012726C
++0070: 0x00127270   0x001272B0   0x000E73AC   0x0012727C
++0080: 0x000E73B0   0x0368905C   0x036B35A4   0x00000000
++0090: 0x03688020   0x0002A548   0x5CDAF428   0x0281A6B0
++00A0: 0x0019F82C   0x00000034   0x037DA860   0x00000001
++00B0: 0x0281A6B0   0x0019F83C   0x004746BE   0x00000002
++00C0: 0x0019F82C   0x00000034   0x00470001   0x00007369
++00D0: 0x5F646D63   0x7270616E   0x67697661   0x74616769
++00E0: 0x006E6F72   0x0281A6B0   0x036B35A4   0x00000001
++00F0: 0x000E73A4   0x00000000   0x00000000   0x00000000
++0100: 0x00000000   0x00000000   0x00000000   0x00000000
++0110: 0x00000000   0x00000000   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x00000000   0x02010002   0x022B0270
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+WS2_32.dll	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\WS2_32.dll)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+MSVCP140.dll	A: 0x5C670000 - 0x5C706000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+VCRUNTIME140.dll	A: 0x5CDE0000 - 0x5CDFD000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+streamer.dll	A: 0x5CD70000 - 0x5CDD6000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\streamer.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F304	EBX: 0x03700578	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x024DA628	EBP: 0x0019F314	ESP: 0x0019F2EC
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x024DA628   0x024DA628   0x03700578   0xFFFFFFFF
++0010: 0x0019F2EC   0x0019ED2C   0x0019FB24   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x037133D0   0x004056CD
++0030: 0x00000000   0x004010B6   0x024DA628   0x0389E148
++0040: 0x0374F7A0   0x00402B63   0x024DA628   0x00000011
++0050: 0x0019F354   0x0389E148   0x0019F3A0   0x024DA628
++0060: 0x0000003A   0x00000002   0x00000000   0x0014E9A4
++0070: 0x0014E9A8   0x0014EFD0   0x0010F148   0x0014E9B4
++0080: 0x0010F14C   0x03700578   0x0374F7A0   0x00000000
++0090: 0x036FF020   0x0004F228   0x5CDAF428   0x024DA628
++00A0: 0x0019F80C   0x0000003A   0x0389E77C   0x00000001
++00B0: 0x024DA628   0x0019F81C   0x004746BE   0x00000002
++00C0: 0x0019F80C   0x0000003A   0x66617254   0x20616B69
++00D0: 0x6F726541   0x6D6F7264   0x00470020   0x00007369
++00E0: 0x5F646D63   0x6965726B   0x6C6A6172   0x6C656261
++00F0: 0x00474400   0x024DA628   0x024DA628   0x03700578
++0100: 0x0010F100   0x00000000   0x00000000   0x00000000
++0110: 0x00000000   0x00000000   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x00000000   0x00000000   0x00000000
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+WS2_32.dll	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\WS2_32.dll)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+VCRUNTIME140.dll	A: 0x5CDE0000 - 0x5CDFD000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+MSVCP140.dll	A: 0x5C670000 - 0x5C706000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+streamer.dll	A: 0x5CD70000 - 0x5CDD6000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\streamer.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F2F0	EBX: 0x036CE5D4	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x0289A628	EBP: 0x0019F300	ESP: 0x0019F2D8
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x0289A628   0x0289A628   0x036CE5D4   0xFFFFFFFF
++0010: 0x0019F2D8   0x0019ED1C   0x0019FB0C   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x036E142C   0x004056CD
++0030: 0x00000000   0x004010B6   0x0289A628   0x0387D824
++0040: 0x03720560   0x00402B63   0x0289A628   0x00000011
++0050: 0x0019F340   0x0387D824   0x0019F38C   0x0289A628
++0060: 0x0000003A   0x00000002   0x00000000   0x0015D2C0
++0070: 0x0015D2C4   0x0015D410   0x0011D628   0x0015D2D0
++0080: 0x0011D62C   0x036CE5D4   0x03720560   0x00000000
++0090: 0x036CD020   0x00051F8C   0x5CDAF428   0x0289A628
++00A0: 0x0019F80C   0x0000003A   0x0387D97C   0x00000001
++00B0: 0x0289A628   0x0019F81C   0x004746BE   0x00000002
++00C0: 0x0019F80C   0x0000003A   0x6163754B   0x2065746A
++00D0: 0x6C61732F   0x20726574   0x76206164   0x74696469
++00E0: 0x6F702065   0x766F6C73   0x76732065   0x00470065
++00F0: 0x00007369   0x5F646D63   0x6965726B   0x6C6A6172
++0100: 0x6C656261   0x00474400   0x0289A628   0x03720560
++0110: 0x0011D4F8   0x0011D590   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x00000000   0x00000000   0x00000000
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+ws2_32.DLL	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\ws2_32.DLL)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+VCRUNTIME140.dll	A: 0x5CDE0000 - 0x5CDFD000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+MSVCP140.dll	A: 0x5C670000 - 0x5C706000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+streamer.dll	A: 0x5CD70000 - 0x5CDD6000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\streamer.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F2F0	EBX: 0x0379D5D4	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x0295A628	EBP: 0x0019F300	ESP: 0x0019F2D8
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x0295A628   0x0295A628   0x0379D5D4   0xFFFFFFFF
++0010: 0x0019F2D8   0x0019ED1C   0x0019FB0C   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x037B042C   0x004056CD
++0030: 0x00000000   0x004010B6   0x0295A628   0x0394C824
++0040: 0x037EF560   0x00402B63   0x0295A628   0x00000011
++0050: 0x0019F340   0x0394C824   0x0019F38C   0x0295A628
++0060: 0x0000003A   0x00000002   0x00000000   0x0015D2C0
++0070: 0x0015D2C4   0x0015D410   0x0011D628   0x0015D2D0
++0080: 0x0011D62C   0x0379D5D4   0x037EF560   0x00000000
++0090: 0x0379C020   0x00051F8C   0x5CDAF428   0x0295A628
++00A0: 0x0019F80C   0x0000003A   0x0394C97C   0x00000001
++00B0: 0x0295A628   0x0019F81C   0x004746BE   0x00000002
++00C0: 0x0019F80C   0x0000003A   0x6163754B   0x2065746A
++00D0: 0x6C61732F   0x20726574   0x76206164   0x74696469
++00E0: 0x6F702065   0x766F6C73   0x76732065   0x00470065
++00F0: 0x00007369   0x5F646D63   0x6965726B   0x6C6A6172
++0100: 0x6C656261   0x00474400   0x0295A628   0x037EF560
++0110: 0x0011D4F8   0x0011D590   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x00000000   0x00000000   0x00000000
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+ws2_32.DLL	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\ws2_32.DLL)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+VCRUNTIME140.dll	A: 0x5CDE0000 - 0x5CDFD000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+MSVCP140.dll	A: 0x5C670000 - 0x5C706000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+streamer.dll	A: 0x5CD70000 - 0x5CDD6000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\streamer.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F2D8	EBX: 0x036915D4	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x0281A628	EBP: 0x0019F2E8	ESP: 0x0019F2C0
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x0281A628   0x0281A628   0x036915D4   0xFFFFFFFF
++0010: 0x0019F2C0   0x0019ED04   0x0019FB0C   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x036A442C   0x004056CD
++0030: 0x00000000   0x004010B6   0x0281A628   0x03840824
++0040: 0x036E3560   0x00402B63   0x0281A628   0x00000011
++0050: 0x0019F328   0x03840824   0x0019F374   0x0281A628
++0060: 0x0000003A   0x00000002   0x00000000   0x0015D2C0
++0070: 0x0015D2C4   0x0015D410   0x0011D628   0x0015D2D0
++0080: 0x0011D62C   0x036915D4   0x036E3560   0x00000000
++0090: 0x03690020   0x00051F8C   0x5CDAF428   0x0281A628
++00A0: 0x0019F7F4   0x0000003A   0x0384097C   0x00000001
++00B0: 0x0281A628   0x0019F804   0x004746BE   0x00000002
++00C0: 0x0019F7F4   0x0000003A   0x6163754B   0x2065746A
++00D0: 0x6C61732F   0x20726574   0x76206164   0x74696469
++00E0: 0x6F702065   0x766F6C73   0x76732065   0x00470065
++00F0: 0x00007369   0x5F646D63   0x6965726B   0x6C6A6172
++0100: 0x6C656261   0x00474400   0x0281A628   0x0281A628
++0110: 0x036915D4   0x0011D590   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x00000000   0x00000000   0x00000000
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+ws2_32.DLL	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\ws2_32.DLL)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+VCRUNTIME140.dll	A: 0x5CDE0000 - 0x5CDFD000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+MSVCP140.dll	A: 0x5C670000 - 0x5C706000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+streamer.dll	A: 0x5CD70000 - 0x5CDD6000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\streamer.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
+
+--------------------------
+SA-MP Server: 0.3.7-R2
+
+Exception At Address: 0x0049939B Module: (samp-server.exe)
+
+Registers:
+EAX: 0x0019F318	EBX: 0x036CA5D4	ECX: 0x00000000	EDX: 0x004056C0
+ESI: 0x00000000	EDI: 0x0288A628	EBP: 0x0019F328	ESP: 0x0019F300
+EFLAGS: 0x00010286
+
+Stack:
++0000: 0x0288A628   0x0288A628   0x036CA5D4   0xFFFFFFFF
++0010: 0x0019F300   0x0019ED44   0x0019FB2C   0x0049D208
++0020: 0x004BA1B8   0xFFFFFFFF   0x036DD42C   0x004056CD
++0030: 0x00000000   0x004010B6   0x0288A628   0x038796E4
++0040: 0x0371C4A0   0x00402B63   0x0288A628   0x00000011
++0050: 0x0019F368   0x038796E4   0x0019F3B4   0x0288A628
++0060: 0x0000003A   0x00000002   0x00000000   0x0015D240
++0070: 0x0015D244   0x0015D390   0x0011D4A8   0x0015D250
++0080: 0x0011D4AC   0x036CA5D4   0x0371C4A0   0x00000000
++0090: 0x036C9020   0x00051ECC   0x5CDAF428   0x0288A628
++00A0: 0x0019F814   0x0000003A   0x0387983C   0x00000001
++00B0: 0x0288A628   0x0019F824   0x004746BE   0x00000002
++00C0: 0x0019F814   0x0000003A   0x696C6F56   0x0047006D
++00D0: 0x00007369   0x5F646D63   0x6965726B   0x6C6A6172
++00E0: 0x6C656261   0x00474400   0x0288A628   0x0288A628
++00F0: 0x036CA5D4   0x0011D490   0x00000000   0x00000000
++0100: 0x00000000   0x00000000   0x00000000   0x00000000
++0110: 0x00000000   0x00000000   0x00000000   0x00000000
++0120: 0x00000000   0x00000000   0x00000000   0x00000000
++0130: 0x00000000   0x00000000   0x00000000   0x00000000
+
+--------------------------
+
+Loaded Modules:
+samp-server.exe	A: 0x00400000 - 0x00519000	(C:\Users\Eldin\Desktop\Kopija extreme\samp-server.exe)
+ntdll.dll	A: 0x76FA0000 - 0x77144000	(C:\Windows\SYSTEM32\ntdll.dll)
+KERNEL32.DLL	A: 0x75BB0000 - 0x75CA0000	(C:\Windows\System32\KERNEL32.DLL)
+KERNELBASE.dll	A: 0x751D0000 - 0x75409000	(C:\Windows\System32\KERNELBASE.dll)
+SHELL32.dll	A: 0x754D0000 - 0x75AAB000	(C:\Windows\System32\SHELL32.dll)
+msvcp_win.dll	A: 0x76AD0000 - 0x76B4B000	(C:\Windows\System32\msvcp_win.dll)
+ucrtbase.dll	A: 0x761E0000 - 0x76300000	(C:\Windows\System32\ucrtbase.dll)
+USER32.dll	A: 0x76D60000 - 0x76EFD000	(C:\Windows\System32\USER32.dll)
+win32u.dll	A: 0x74FF0000 - 0x75008000	(C:\Windows\System32\win32u.dll)
+GDI32.dll	A: 0x76870000 - 0x76893000	(C:\Windows\System32\GDI32.dll)
+gdi32full.dll	A: 0x74E70000 - 0x74F57000	(C:\Windows\System32\gdi32full.dll)
+WSOCK32.dll	A: 0x64570000 - 0x64578000	(C:\Windows\SYSTEM32\WSOCK32.dll)
+WINMM.dll	A: 0x6BDE0000 - 0x6BE08000	(C:\Windows\SYSTEM32\WINMM.dll)
+msvcrt.dll	A: 0x76C40000 - 0x76CFF000	(C:\Windows\System32\msvcrt.dll)
+WS2_32.dll	A: 0x76F00000 - 0x76F63000	(C:\Windows\System32\WS2_32.dll)
+RPCRT4.dll	A: 0x76980000 - 0x76A39000	(C:\Windows\System32\RPCRT4.dll)
+IMM32.DLL	A: 0x75B80000 - 0x75BA5000	(C:\Windows\System32\IMM32.DLL)
+sscanf.DLL	A: 0x5D100000 - 0x5D12A000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\sscanf.DLL)
+VCRUNTIME140.dll	A: 0x5CDE0000 - 0x5CDFD000	(C:\Windows\SYSTEM32\VCRUNTIME140.dll)
+MSVCP140.dll	A: 0x5C670000 - 0x5C706000	(C:\Windows\SYSTEM32\MSVCP140.dll)
+streamer.dll	A: 0x5CD70000 - 0x5CDD6000	(C:\Users\Eldin\Desktop\Kopija extreme\plugins\streamer.dll)
+mswsock.dll	A: 0x742A0000 - 0x742F2000	(C:\Windows\system32\mswsock.dll)
+napinsp.dll	A: 0x74360000 - 0x74371000	(C:\Windows\system32\napinsp.dll)
+sechost.dll	A: 0x76300000 - 0x76377000	(C:\Windows\System32\sechost.dll)
+bcrypt.dll	A: 0x76F70000 - 0x76F89000	(C:\Windows\System32\bcrypt.dll)
+pnrpnsp.dll	A: 0x74340000 - 0x74356000	(C:\Windows\system32\pnrpnsp.dll)
+wshbth.dll	A: 0x74320000 - 0x74336000	(C:\Windows\system32\wshbth.dll)
+NLAapi.dll	A: 0x74300000 - 0x74316000	(C:\Windows\system32\NLAapi.dll)
+IPHLPAPI.DLL	A: 0x74410000 - 0x74442000	(C:\Windows\SYSTEM32\IPHLPAPI.DLL)
+DNSAPI.dll	A: 0x74210000 - 0x742A0000	(C:\Windows\SYSTEM32\DNSAPI.dll)
+NSI.dll	A: 0x75AB0000 - 0x75AB7000	(C:\Windows\System32\NSI.dll)
+winrnr.dll	A: 0x74200000 - 0x7420E000	(C:\Windows\System32\winrnr.dll)
+rasadhlp.dll	A: 0x741F0000 - 0x741F8000	(C:\Windows\System32\rasadhlp.dll)
