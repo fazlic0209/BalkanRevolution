@@ -69,3 +69,8 @@ NOVI HUD / TEXTDRAW
 Gore: Balkan Revolution, BANKA (RSD), EURO, ZLATO, BEOGRAD i trenutna GTA lokacija.
 Dole: detaljna tamna traka, HAPPY HOUR: USKORO, datum, vrijeme i nasumicne poruke svakih 150 sekundi.
 EURO cita vrijednost Euro iz Korisnici/<ime>.ini; ako je nema, prikazuje 0.
+
+BANKA EKSTERIJER I ULAZ
+Osam objekata iz Banka Exterijer.txt je u gamemodes\BE.pwn.
+Pritisnite F kod 1462.9076, -1022.8073 za ulaz, a kod 153.7911, 1702.7163 za izlaz.
+Obje tacke su u Interior 0 i VirtualWorld 0.

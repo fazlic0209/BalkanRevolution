@@ -106,7 +106,7 @@ new PlayerCurrentSkin[MAX_PLAYERS];
 
 // HUD: zajednicki dijelovi se prave jednom, podaci posebno za svakog igraca.
 #define HUD_STATIC_PARTS 53
-new Text:TD_ServerBalkan[2];
+new Text:TD_ServerBalkan;
 new Text:TD_HudParts[HUD_STATIC_PARTS];
 new Text:TD_HudPoruka;
 new LastHudMessage = -1;
@@ -388,6 +388,30 @@ stock PlayerText:CreateRentTextDraw(playerid)
     return td;
 }
 
+stock UcitajBankuEksterijer()
+{
+    // Objekti iz Banka Exterijer.txt.
+    new STREAMER_TAG_OBJECT:tmpobjid;
+    tmpobjid = CreateDynamicObjectEx(18981, 1444.482299, -1021.279235, 18.236221, 0.000000, 0.000000, -90.000053, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF000066);
+    SetDynamicObjectMaterial(tmpobjid, 1, -1, "none", "none", 0xFF000033);
+    tmpobjid = CreateDynamicObjectEx(18981, 1469.381225, -1021.279235, 18.236221, 0.000000, 0.000000, -90.000053, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF000066);
+    tmpobjid = CreateDynamicObjectEx(18981, 1479.774291, -1021.279235, 18.236221, 0.000000, 0.000000, -90.000053, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF000066);
+    tmpobjid = CreateDynamicObjectEx(18980, 1451.502441, -1021.296264, 18.216236, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF003300);
+    tmpobjid = CreateDynamicObjectEx(18980, 1472.503784, -1021.296264, 18.216236, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF003300);
+    tmpobjid = CreateDynamicObjectEx(18980, 1432.431518, -1021.296264, 18.216236, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF003300);
+    tmpobjid = CreateDynamicObjectEx(18980, 1491.551025, -1021.296264, 18.216236, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF003300);
+    tmpobjid = CreateDynamicObjectEx(18980, 1461.862670, -1021.240722, 31.109926, -89.899894, 2.499999, -87.400001, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF003300);
+    return 1;
+}
+
 public OnGameModeInit()
 {
     // Pokrece tajmer na svakih 180000 milisekundi (što je tacno 3 minuta)
@@ -407,6 +431,9 @@ public OnGameModeInit()
     EnableStuntBonusForAll(0); // Bez stunt bonusa i njihovih poruka.
     UcitajServerMape();     // Ucitava objekte/mape iz Mape.inc
     UcitajBankuMapu();      // Banka iz BANKA-FINITO-HAHAH-1.txt
+    UcitajBankuEksterijer(); // Spoljasnja mapa banke
+    CreateDynamic3DTextLabel("{33CCFF}BANKA{FFFFFF}\nDa udjete u Banku pritisnite F", 0xFFFFFFFF, 1462.90759277, -1022.80725097, 24.53310317, 20.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+    CreateDynamic3DTextLabel("{33CCFF}Izlaz iz Banke{FFFFFF}\nPritisnite F", 0xFFFFFFFF, 153.79109191, 1702.71630859, -0.15856175, 20.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
     UcitajVozilaServera();  // Ucitava vozila i motore iz Vozila.inc
     UcitajOglase();
     UcitajZlataru(); // <--- OVDJE DODAJ Ovu liniju!
@@ -3659,6 +3686,29 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
         new pVW = GetPlayerVirtualWorld(playerid);
         new pInt = GetPlayerInterior(playerid);
 
+        // BANKA: obje tacke su u interioru 0 i virtualnom svijetu 0.
+        if(!IsPlayerInAnyVehicle(playerid) && pVW == 0 && pInt == 0)
+        {
+            if(IsPlayerInRangeOfPoint(playerid, 2.5, 1462.90759277, -1022.80725097, 23.83310317))
+            {
+                SetPlayerInterior(playerid, 0);
+                SetPlayerVirtualWorld(playerid, 0);
+                SetPlayerPos(playerid, 153.79109191, 1702.71630859, -0.85856175);
+                SetCameraBehindPlayer(playerid);
+                SendClientMessage(playerid, 0x33CCFFFF, "[BANKA]: Usli ste u banku.");
+                return 1;
+            }
+            if(IsPlayerInRangeOfPoint(playerid, 2.5, 153.79109191, 1702.71630859, -0.85856175))
+            {
+                SetPlayerInterior(playerid, 0);
+                SetPlayerVirtualWorld(playerid, 0);
+                SetPlayerPos(playerid, 1462.90759277, -1022.80725097, 23.83310317);
+                SetCameraBehindPlayer(playerid);
+                SendClientMessage(playerid, 0x33CCFFFF, "[BANKA]: Izisli ste iz banke.");
+                return 1;
+            }
+        }
+
         // 1. KUCE - IZLAZ
         for(new h = 0; h < MAX_KUCA; h++)
         {
@@ -5625,8 +5675,7 @@ stock InitRevolutionHud()
 {
     // Odvojena plava pocetna slova i bijela ostatak imena, sa crnom sjenom.
     // Jedan TextDraw po rijeci cuva prirodan razmak slova i jasna pocetna slova.
-    TD_ServerBalkan[0] = CreateHudLabel(500.0, 5.0, "~b~~h~B~w~ALKAN", 2, 0.20, 1.05, 0xFFFFFFFF, 1);
-    TD_ServerBalkan[1] = CreateHudLabel(554.0, 5.0, "~b~~h~R~w~EVOLUTION", 2, 0.20, 1.05, 0xFFFFFFFF, 1);
+    TD_ServerBalkan = CreateHudLabel(508.0, 5.0, "~b~~h~B~w~ALKAN ~b~~h~R~w~EVOLUTION", 2, 0.26, 1.35, 0xFFFFFFFF, 2);
 
     // Tamna donja traka i tanke svijetloplave granice.
     TD_HudParts[0] = CreateHudPanel(0.0, 428.0, 640.0, 1.85, 0x111820F4);
@@ -5759,7 +5808,7 @@ stock DestroyRevolutionPlayerHud(playerid)
 
 stock ShowRevolutionHud(playerid)
 {
-    for(new i = 0; i < 2; i++) TextDrawShowForPlayer(playerid, TD_ServerBalkan[i]);
+    TextDrawShowForPlayer(playerid, TD_ServerBalkan);
     for(new i = 0; i < HUD_STATIC_PARTS; i++) TextDrawShowForPlayer(playerid, TD_HudParts[i]);
     TextDrawShowForPlayer(playerid, TD_HudPoruka);
     PlayerTextDrawShow(playerid, TD_HudVrijeme[playerid]);
