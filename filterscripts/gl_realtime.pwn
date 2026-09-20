@@ -17,9 +17,7 @@ new worldtime_override = 0;
 new worldtime_overridehour = 0;
 new worldtime_overridemin  = 0;
 
-new Text:txtTimeDisp;
 new hour, minute;
-new timestr[32];
 
 forward UpdateTimeAndWeather();
 
@@ -51,9 +49,7 @@ public UpdateTimeAndWeather()
 		minute = worldtime_overridemin;
 	}
 
-   	format(timestr,32,"%02d:%02d",hour,minute);
-   	TextDrawSetString(txtTimeDisp,timestr);
-   	SetWorldTime(hour);
+	SetWorldTime(hour);
    	
 	new x=0;
 	while(x!=MAX_PLAYERS) {
@@ -77,17 +73,6 @@ public UpdateTimeAndWeather()
 
 public OnGameModeInit()
 {
-	// Init our text display
-	txtTimeDisp = TextDrawCreate(605.0,25.0,"00:00");
-	TextDrawUseBox(txtTimeDisp, 0);
-	TextDrawFont(txtTimeDisp, 3);
-	TextDrawSetShadow(txtTimeDisp,0); // no shadow
-    TextDrawSetOutline(txtTimeDisp,2); // thickness 1
-    TextDrawBackgroundColor(txtTimeDisp,0x000000FF);
-    TextDrawColor(txtTimeDisp,0xFFFFFFFF);
-    TextDrawAlignment(txtTimeDisp,3);
-	TextDrawLetterSize(txtTimeDisp,0.5,1.5);
-	
 	UpdateTimeAndWeather();
 	SetTimer("UpdateTimeAndWeather",1000 * 60,1);
 
@@ -98,8 +83,6 @@ public OnGameModeInit()
 
 public OnPlayerSpawn(playerid)
 {
-	TextDrawShowForPlayer(playerid,txtTimeDisp);
-	
 	// Update time
 	if(!worldtime_override) {
     	gettime(hour, minute);
@@ -111,14 +94,6 @@ public OnPlayerSpawn(playerid)
 	SetPlayerTime(playerid,hour,minute);
 	
 	return 1;
-}
-
-//--------------------------------------------------
-
-public OnPlayerDeath(playerid, killerid, reason)
-{
-    TextDrawHideForPlayer(playerid,txtTimeDisp);
- 	return 1;
 }
 
 //--------------------------------------------------

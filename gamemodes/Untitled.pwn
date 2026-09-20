@@ -21,6 +21,7 @@
 #define SSCANF_NO_NICE_FEATURES
 #include <sscanf2>
 
+#define BANK_ROBBERY_FILE "BalkanRP/BankRobbery.ini"
 #define DIALOG_REGISTRACIJA 1001
 #define DIALOG_LOGIN        1002
 #define DIALOG_POL          1003
@@ -42,6 +43,7 @@
 #define DIALOG_SET_ADMIN_CODE 15002
 #define DIALOG_ADMIN_CODE_NOTICE 15003
 #define DIALOG_RENT 15004
+#define DIALOG_DOSIJE 15005
 #define MAX_TRAFIKA 50 // Možeš staviti koliki god maksimalan broj trafika želiš
 #define DIALOG_TRAFIKA         100 // Možeš staviti bilo koji slobodan broj koji se ne poklapa sa drugim
 #define DIALOG_TRAFIKA_SOK     101
@@ -80,6 +82,7 @@ new IgracKrediti[MAX_PLAYERS];
 new kapija_parking;
 new bool:BigEar[MAX_PLAYERS];
 new bool:ScriptJetpack[MAX_PLAYERS];
+new JetpackDropGuardUntil[MAX_PLAYERS];
 new LastLocationZone[MAX_PLAYERS];
 new bool:HasMapMarker[MAX_PLAYERS];
 new Float:MapMarkerX[MAX_PLAYERS], Float:MapMarkerY[MAX_PLAYERS], Float:MapMarkerZ[MAX_PLAYERS];
@@ -90,6 +93,10 @@ new RentPendingVehicle[MAX_PLAYERS];
 new RentExpiresAt[MAX_PLAYERS];
 new PlayerText:RentTextDraw[MAX_PLAYERS];
 
+#define PUTARINA_CIJENA 100
+new STREAMER_TAG_OBJECT:PutarinaRampa[2];
+new PutarinaKorak[2], PutarinaStanje[2], PutarinaOtvorenaDo[2];
+
 // --- TAXI SISTEM GLOBALNE PROMENLJIVE ---
 new G_TaxiCaller = INVALID_PLAYER_ID;
 new Float:G_TaxiPos[3];
@@ -98,6 +105,39 @@ new Float:TaxiDutyPos[3] = {1753.6607, -1894.3673, 13.5571}; // Koordinate za /d
 new G_TaxiPrice = 0; // Pamti cenu voznje
 new bool:G_TaxiDuty = false; // Da li je neko na duznosti
 new G_AcceptedTaxiDriver = INVALID_PLAYER_ID;
+// Pljacka banke: jedno hakovanje i jedan zajednicki cooldown za sve igrace.
+new BankHackPlayer = INVALID_PLAYER_ID;
+new BankHackStartedAt;
+new BankHackCooldownUntil;
+new BankLaserDisableAt;
+new BankHackSuccessPlayer = INVALID_PLAYER_ID;
+new BankResetAt;
+new bool:BankDoorsOpen;
+new bool:BankLasersOff;
+new bool:BankLaserWarned[MAX_PLAYERS];
+new Float:BankLaserOriginalZ[11];
+new Float:BankHackStartX, Float:BankHackStartY, Float:BankHackStartZ;
+
+// Druga faza pljacke banke.
+new BankDynamiteObject;
+new BankDynamiteUntil;
+new bool:BankVaultDoorDown;
+new BankRobber = INVALID_PLAYER_ID;
+new BankRobberyUntil;
+new BankRobberyCooldownUntil;
+new bool:BankRobberyFinishedThisCycle;
+new bool:BankMoneyBag[MAX_PLAYERS];
+new WantedPoints[MAX_PLAYERS];
+new PendingDeathFine[MAX_PLAYERS];
+new PendingDeathWanted[MAX_PLAYERS];
+new DeathPenaltySerial[MAX_PLAYERS];
+new WantedReason[MAX_PLAYERS][64];
+new PlayerText:TD_WantedHint[MAX_PLAYERS];
+new BankLaserLastCheck[MAX_PLAYERS];
+new BankLaserLastAlert[MAX_PLAYERS];
+new bool:BankLaserPrevValid[MAX_PLAYERS];
+new Float:BankLaserPrevX[MAX_PLAYERS], Float:BankLaserPrevY[MAX_PLAYERS], Float:BankLaserPrevZ[MAX_PLAYERS];
+
 new PlayerOrg[MAX_PLAYERS];
 new bool:IsHealing[MAX_PLAYERS];
 new PlayerCurrentSkin[MAX_PLAYERS];
@@ -105,17 +145,239 @@ new PlayerCurrentSkin[MAX_PLAYERS];
 
 
 // HUD: zajednicki dijelovi se prave jednom, podaci posebno za svakog igraca.
-#define HUD_STATIC_PARTS 53
-new Text:TD_ServerBalkan;
-new Text:TD_HudParts[HUD_STATIC_PARTS];
+// Elementi HUD-a direktno iz korisnikovog DTD.pwn exporta.
+new Text:TD_DTD[61];
+new PlayerText:TD_Vozilo[MAX_PLAYERS][8];
+new bool:VoziloHudShown[MAX_PLAYERS];
+new bool:VehicleHudInitialized[MAX_VEHICLES], bool:VehicleHudOutOfFuel[MAX_VEHICLES];
+new Float:VehicleHudFuel[MAX_VEHICLES], Float:VehicleHudKm[MAX_VEHICLES];
+new Float:VehicleHudLastX[MAX_VEHICLES], Float:VehicleHudLastY[MAX_VEHICLES], Float:VehicleHudLastZ[MAX_VEHICLES];
+new bool:VehicleHudLastPosValid[MAX_VEHICLES];
+new VehicleHudLastSpeed[MAX_PLAYERS];
+new VehicleHudNextStartTry[MAX_VEHICLES], VehicleHudNextStallAt[MAX_VEHICLES];
+new bool:VehicleHudBrokenNotice[MAX_VEHICLES], bool:VehicleHudStalled[MAX_VEHICLES];
+new VehicleHudModelNames[212][] = {
+    "Landstalker",
+    "Bravura",
+    "Buffalo",
+    "Linerunner",
+    "Perrenial",
+    "Sentinel",
+    "Dumper",
+    "Firetruck",
+    "Trashmaster",
+    "Stretch",
+    "Manana",
+    "Infernus",
+    "Voodoo",
+    "Pony",
+    "Mule",
+    "Cheetah",
+    "Ambulance",
+    "Leviathan",
+    "Moonbeam",
+    "Esperanto",
+    "Taxi",
+    "Washington",
+    "Bobcat",
+    "Mr Whoopee",
+    "BF Injection",
+    "Hunter",
+    "Premier",
+    "Enforcer",
+    "Securicar",
+    "Banshee",
+    "Predator",
+    "Bus",
+    "Rhino",
+    "Barracks",
+    "Hotknife",
+    "Trailer 1",
+    "Previon",
+    "Coach",
+    "Cabbie",
+    "Stallion",
+    "Rumpo",
+    "RC Bandit",
+    "Romero",
+    "Packer",
+    "Monster",
+    "Admiral",
+    "Squalo",
+    "Seasparrow",
+    "Pizzaboy",
+    "Tram",
+    "Trailer 2",
+    "Turismo",
+    "Speeder",
+    "Reefer",
+    "Tropic",
+    "Flatbed",
+    "Yankee",
+    "Caddy",
+    "Solair",
+    "Berkley's RC Van",
+    "Skimmer",
+    "PCJ-600",
+    "Faggio",
+    "Freeway",
+    "RC Baron",
+    "RC Raider",
+    "Glendale",
+    "Oceanic",
+    "Sanchez",
+    "Sparrow",
+    "Patriot",
+    "Quad",
+    "Coastguard",
+    "Dinghy",
+    "Hermes",
+    "Sabre",
+    "Rustler",
+    "ZR-350",
+    "Walton",
+    "Regina",
+    "Comet",
+    "BMX",
+    "Burrito",
+    "Camper",
+    "Marquis",
+    "Baggage",
+    "Dozer",
+    "Maverick",
+    "News Chopper",
+    "Rancher",
+    "FBI Rancher",
+    "Virgo",
+    "Greenwood",
+    "Jetmax",
+    "Hotring",
+    "Sandking",
+    "Blista Compact",
+    "Police Maverick",
+    "Boxville",
+    "Benson",
+    "Mesa",
+    "RC Goblin",
+    "Hotring Racer A",
+    "Hotring Racer B",
+    "Bloodring Banger",
+    "Rancher",
+    "Super GT",
+    "Elegant",
+    "Journey",
+    "Bike",
+    "Mountain Bike",
+    "Beagle",
+    "Cropdust",
+    "Stunt",
+    "Tanker",
+    "Roadtrain",
+    "Nebula",
+    "Majestic",
+    "Buccaneer",
+    "Shamal",
+    "Hydra",
+    "FCR-900",
+    "NRG-500",
+    "HPV1000",
+    "Cement Truck",
+    "Tow Truck",
+    "Fortune",
+    "Cadrona",
+    "FBI Truck",
+    "Willard",
+    "Forklift",
+    "Tractor",
+    "Combine",
+    "Feltzer",
+    "Remington",
+    "Slamvan",
+    "Blade",
+    "Freight",
+    "Streak",
+    "Vortex",
+    "Vincent",
+    "Bullet",
+    "Clover",
+    "Sadler",
+    "Firetruck LA",
+    "Hustler",
+    "Intruder",
+    "Primo",
+    "Cargobob",
+    "Tampa",
+    "Sunrise",
+    "Merit",
+    "Utility",
+    "Nevada",
+    "Yosemite",
+    "Windsor",
+    "Monster A",
+    "Monster B",
+    "Uranus",
+    "Jester",
+    "Sultan",
+    "Stratum",
+    "Elegy",
+    "Raindance",
+    "RC Tiger",
+    "Flash",
+    "Tahoma",
+    "Savanna",
+    "Bandito",
+    "Freight Flat",
+    "Streak Carriage",
+    "Kart",
+    "Mower",
+    "Duneride",
+    "Sweeper",
+    "Broadway",
+    "Tornado",
+    "AT-400",
+    "DFT-30",
+    "Huntley",
+    "Stafford",
+    "BF-400",
+    "Newsvan",
+    "Tug",
+    "Trailer 3",
+    "Emperor",
+    "Wayfarer",
+    "Euros",
+    "Hotdog",
+    "Club",
+    "Freight Carriage",
+    "Trailer 3",
+    "Andromada",
+    "Dodo",
+    "RC Cam",
+    "Launch",
+    "Police Car (LSPD)",
+    "Police Car (SFPD)",
+    "Police Car (LVPD)",
+    "Police Ranger",
+    "Picador",
+    "S.W.A.T. Van",
+    "Alpha",
+    "Phoenix",
+    "Glendale",
+    "Sadler",
+    "Luggage Trailer A",
+    "Luggage Trailer B",
+    "Stair Trailer",
+    "Boxville",
+    "Farm Plow",
+    "Utility Trailer"
+};
 new Text:TD_HudPoruka;
-new LastHudMessage = -1;
 new PlayerText:TD_NovacPlavi[MAX_PLAYERS];
 new PlayerText:TD_Euro[MAX_PLAYERS];
 new PlayerText:TD_Zlato[MAX_PLAYERS];
 new PlayerText:TD_Grad[MAX_PLAYERS];
 new PlayerText:TD_Lokacija[MAX_PLAYERS];
 
+new PlayerText:TD_HudDatum[MAX_PLAYERS];
 new PlayerText:TD_HudVrijeme[MAX_PLAYERS];
 
 new LastHudMinute[MAX_PLAYERS];
@@ -390,25 +652,264 @@ stock PlayerText:CreateRentTextDraw(playerid)
 
 stock UcitajBankuEksterijer()
 {
-    // Objekti iz Banka Exterijer.txt.
+    // BEogradska Banka Exterijer ByRile.txt
     new STREAMER_TAG_OBJECT:tmpobjid;
-    tmpobjid = CreateDynamicObjectEx(18981, 1444.482299, -1021.279235, 18.236221, 0.000000, 0.000000, -90.000053, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18981, 1444.482299, -1021.299255, 18.236219, 0.000000, 0.000000, -90.000053, 300.00, 300.00);
     SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF000066);
-    SetDynamicObjectMaterial(tmpobjid, 1, -1, "none", "none", 0xFF000033);
-    tmpobjid = CreateDynamicObjectEx(18981, 1469.381225, -1021.279235, 18.236221, 0.000000, 0.000000, -90.000053, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18981, 1469.381225, -1021.299255, 18.236219, 0.000000, 0.000000, -90.000053, 300.00, 300.00);
     SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF000066);
-    tmpobjid = CreateDynamicObjectEx(18981, 1479.774291, -1021.279235, 18.236221, 0.000000, 0.000000, -90.000053, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18981, 1479.774291, -1021.309265, 18.236219, 0.000000, 0.000000, -90.000053, 300.00, 300.00);
     SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF000066);
-    tmpobjid = CreateDynamicObjectEx(18980, 1451.502441, -1021.296264, 18.216236, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18980, 1451.502441, -1021.316284, 18.216239, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
     SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF003300);
-    tmpobjid = CreateDynamicObjectEx(18980, 1472.503784, -1021.296264, 18.216236, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18980, 1472.503784, -1021.326293, 18.216239, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
     SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF003300);
-    tmpobjid = CreateDynamicObjectEx(18980, 1432.431518, -1021.296264, 18.216236, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18980, 1432.431518, -1021.306274, 18.216239, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
     SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF003300);
-    tmpobjid = CreateDynamicObjectEx(18980, 1491.551025, -1021.296264, 18.216236, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18980, 1491.771240, -1021.316284, 18.216239, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
     SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF003300);
-    tmpobjid = CreateDynamicObjectEx(18980, 1461.862670, -1021.240722, 31.109926, -89.899894, 2.499999, -87.400001, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18980, 1461.862670, -1021.240722, 31.109930, -89.899887, 2.500000, -87.400001, 300.00, 300.00);
     SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF003300);
+    tmpobjid = CreateDynamicObjectEx(4732, 1461.688720, -1021.811889, 29.368179, 0.000000, 0.000000, 145.200027, 300.00, 300.00);
+    SetDynamicObjectMaterialText(tmpobjid, 0, "Banka Intesa", 80, "Calibri", 20, 0, 0xFFFFFFFF, 0x00000000, 1);
+    tmpobjid = CreateDynamicObjectEx(4732, 1442.134643, -1021.803405, 26.538185, 0.000000, 0.000000, 145.200027, 300.00, 300.00);
+    SetDynamicObjectMaterialText(tmpobjid, 0, "KlIjenti nam vjeruju", 80, "Calibri", 20, 0, 0xFFFFFFFF, 0x00000000, 1);
+    tmpobjid = CreateDynamicObjectEx(4732, 1481.715454, -1021.819763, 26.538185, 0.000000, 0.000000, 145.200027, 300.00, 300.00);
+    SetDynamicObjectMaterialText(tmpobjid, 0, "Beogradska Banka", 80, "Calibri", 20, 0, 0xFFFFFFFF, 0x00000000, 1);
+    return 1;
+}
+
+stock UcitajBGGranica()
+{
+    // BG SA Granica.txt
+    new STREAMER_TAG_OBJECT:tmpobjid;
+    tmpobjid = CreateDynamicObjectEx(18766, 1781.832031, 775.857666, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18980, 1777.371459, 777.835571, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18766, 1781.841674, 766.006530, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18766, 1781.830932, 770.937988, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18980, 1777.399169, 764.084838, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18766, 1791.829956, 766.007507, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18766, 1791.835571, 770.971740, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18766, 1791.842407, 775.891113, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18766, 1801.736328, 765.986816, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18766, 1801.731323, 770.909729, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18766, 1801.728149, 775.869689, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18766, 1809.286743, 766.026245, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18980, 1813.741821, 764.446838, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18766, 1809.305053, 770.966003, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18766, 1809.292724, 775.883544, 18.743200, 90.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF0099FF);
+    tmpobjid = CreateDynamicObjectEx(18980, 1813.718383, 777.872802, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18980, 1794.016967, 777.680847, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18980, 1796.779174, 764.014709, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18980, 1797.638549, 777.696716, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18980, 1792.779663, 764.162292, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18980, 1780.402832, 764.020690, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18980, 1780.455566, 777.702941, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18980, 1810.493408, 777.845092, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(18980, 1810.349975, 764.276977, 6.589799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, -1, "none", "none", 0xFF663333);
+    tmpobjid = CreateDynamicObjectEx(19360, 1779.244628, 763.882202, 10.183696, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1779.244628, 763.882202, 13.213697, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1779.244628, 763.882202, 16.583700, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1779.045532, 777.640441, 12.323699, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1779.059570, 777.605163, 15.723699, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1779.059570, 777.605224, 16.603700, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1795.941528, 777.655212, 12.323699, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1796.022827, 777.648315, 15.723699, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1795.819702, 777.609497, 16.603700, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1811.834228, 777.953735, 12.323699, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1812.077514, 777.949829, 15.723699, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1812.250366, 777.939514, 16.603700, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1794.752441, 764.134094, 12.323699, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1794.834716, 764.168212, 15.483699, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1794.647216, 764.169128, 16.583700, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1812.275024, 764.227294, 12.323699, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1812.433105, 764.223571, 15.483699, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1812.265502, 764.235656, 16.583700, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    tmpobjid = CreateDynamicObjectEx(19360, 1787.332031, 778.323364, 15.353708, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    SetDynamicObjectMaterialText(tmpobjid, 0, "Sarajevo Beograd ", 90, "Engravers MT", 20, 0, 0xFFFFFFFF, 0x00000000, 0);
+    tmpobjid = CreateDynamicObjectEx(19360, 1803.882812, 763.572753, 15.353708, 0.000000, 0.000000, 90.000000, 300.00, 300.00);
+    SetDynamicObjectMaterial(tmpobjid, 0, 10765, "airportgnd_sfse", "ws_runwaytarmac", 0x00000000);
+    SetDynamicObjectMaterialText(tmpobjid, 0, "Beograd Sarajevo", 90, "Engravers MT", 20, 0, 0xFFFFFFFF, 0x00000000, 0);
+    tmpobjid = CreateDynamicObjectEx(19425, 1798.892578, 764.138488, 11.176799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1802.176391, 764.113891, 11.176799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1805.461059, 764.117187, 11.176799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1808.668823, 764.106811, 11.176799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1790.681152, 764.053283, 11.176799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1787.412475, 764.053833, 11.176799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1784.100830, 764.068908, 11.176799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1782.387817, 764.058898, 11.176799, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1808.384277, 777.694519, 10.696800, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1805.105834, 777.693847, 10.696800, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1801.804931, 777.697021, 10.696800, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1799.225341, 777.695556, 10.696800, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1791.870727, 777.614074, 10.736800, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1788.669433, 777.600219, 10.736800, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1785.427490, 777.614624, 10.736800, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19425, 1782.623901, 777.611328, 10.736800, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19087, 1790.906738, 778.288146, 19.206699, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(4641, 1793.037109, 769.681213, 12.622599, 0.000000, 0.000000, -2.500011, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(4641, 1796.872070, 770.830932, 12.622599, 0.000000, 0.000000, -7.900012, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19428, 1789.229980, 778.288146, 16.875600, 90.000000, 0.000000, 90.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19428, 1785.808715, 778.304443, 16.875600, 90.000000, 0.000000, 90.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19087, 1784.227050, 778.298278, 19.206699, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19087, 1800.230590, 763.594177, 19.206699, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19428, 1801.892211, 763.580688, 16.875600, 90.000000, 0.000000, 90.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19428, 1805.320800, 763.575683, 16.875600, 90.000000, 0.000000, 90.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19087, 1806.919555, 763.583068, 19.206699, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1791.344238, 768.285949, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1799.092895, 771.657714, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(966, 1807.285034, 771.876770, 10.896140, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    PutarinaRampa[1] = CreateDynamicObjectEx(968, 1807.372436, 771.869384, 11.628600, 0.000000, -90.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1810.454467, 765.818481, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1810.494995, 767.225891, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1810.615356, 768.749023, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1810.526489, 770.540100, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1810.270141, 771.938659, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1809.098022, 771.915588, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1810.471313, 773.792480, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1810.460937, 775.831665, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(966, 1790.313110, 768.756225, 11.036100, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    PutarinaRampa[0] = CreateDynamicObjectEx(968, 1790.364135, 768.771240, 11.768600, 0.000000, -90.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1782.356567, 769.072875, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1780.829223, 769.020935, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1780.594360, 767.378845, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1780.498901, 765.593078, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1780.838867, 770.825805, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1780.985107, 772.674804, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1781.097900, 774.699340, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1781.235595, 776.300842, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1776.311645, 763.752502, 11.260999, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1814.453857, 779.669311, 10.630993, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(1237, 1808.077514, 771.915588, 11.001000, 0.000000, 0.000000, 0.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18880, 1780.312988, 778.640930, 10.686400, 0.000000, 0.000000, -185.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18880, 1796.960327, 778.611022, 10.686400, 0.000000, 0.000000, -185.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18880, 1810.913330, 779.156311, 10.686400, 0.000000, 0.000000, -185.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18880, 1810.675170, 763.043579, 10.686400, 0.000000, 0.000000, -4.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18880, 1796.074340, 762.432373, 10.686400, 0.000000, 0.000000, -4.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(18880, 1780.014770, 762.542602, 10.686400, 0.000000, 0.000000, -4.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(5820, 1774.042114, 768.536682, 14.313500, 0.000000, 0.000000, -90.000000, 300.00, 300.00);
+    tmpobjid = CreateDynamicObjectEx(19360, 1777.258178, 765.842285, 18.183700, 0.000000, 109.000000, 178.000000, 300.00, 300.00);
+    return 1;
+}
+
+forward PutarinaTick();
+public PutarinaTick()
+{
+    for(new gate = 0; gate < 2; gate++)
+    {
+        if(!IsValidDynamicObject(PutarinaRampa[gate])) continue;
+        if(PutarinaStanje[gate] == 1 || PutarinaStanje[gate] == 3)
+        {
+            if(PutarinaStanje[gate] == 1) PutarinaKorak[gate]++;
+            else PutarinaKorak[gate]--;
+            SetDynamicObjectRot(PutarinaRampa[gate], 0.0, -90.0 + float(PutarinaKorak[gate]) * 5.0, 0.0);
+            if(PutarinaKorak[gate] >= 18)
+            {
+                PutarinaKorak[gate] = 18;
+                PutarinaStanje[gate] = 2;
+                PutarinaOtvorenaDo[gate] = gettime() + 15;
+            }
+            else if(PutarinaKorak[gate] <= 0)
+            {
+                PutarinaKorak[gate] = 0;
+                PutarinaStanje[gate] = 0;
+            }
+        }
+        else if(PutarinaStanje[gate] == 2 && gettime() >= PutarinaOtvorenaDo[gate])
+        {
+            new bool:voziloKodRampe = false;
+            new Float:x = gate == 0 ? 1790.364135 : 1807.372436;
+            new Float:y = gate == 0 ? 768.771240 : 771.869384;
+            for(new p = 0; p < MAX_PLAYERS; p++)
+            {
+                if(IsPlayerConnected(p) && IsPlayerInAnyVehicle(p) &&
+                   GetPlayerInterior(p) == 0 && GetPlayerVirtualWorld(p) == 0 &&
+                   IsPlayerInRangeOfPoint(p, 6.0, x, y, 11.8))
+                {
+                    voziloKodRampe = true;
+                    break;
+                }
+            }
+            if(!voziloKodRampe) PutarinaStanje[gate] = 3;
+        }
+    }
+    return 1;
+}
+
+CMD:platiputarinu(playerid, params[])
+{
+    if(!IsPlayerInAnyVehicle(playerid))
+        return SendClientMessage(playerid, 0xFF7777FF, "[PUTARINA]: Morate biti u vozilu.");
+    if(GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0)
+        return SendClientMessage(playerid, 0xFF7777FF, "[PUTARINA]: Niste kod granice.");
+    new gate = -1;
+    if(IsPlayerInRangeOfPoint(playerid, 6.0, 1787.20605468, 770.88598632, 11.96806526)) gate = 0;
+    else if(IsPlayerInRangeOfPoint(playerid, 6.0, 1803.46044921, 769.75775146, 11.97515678)) gate = 1;
+    if(gate == -1)
+        return SendClientMessage(playerid, 0xFF7777FF, "[PUTARINA]: Priblizite se rampi na granici.");
+    if(!IsValidDynamicObject(PutarinaRampa[gate]))
+        return SendClientMessage(playerid, 0xFF7777FF, "[PUTARINA]: Rampa trenutno nije dostupna.");
+    if(PutarinaStanje[gate] != 0)
+        return SendClientMessage(playerid, 0xFF7777FF, "[PUTARINA]: Rampa je vec otvorena ili se pomjera.");
+    if(GetPlayerMoney(playerid) < PUTARINA_CIJENA)
+        return SendClientMessage(playerid, 0xFF7777FF, "[PUTARINA]: Nemate dovoljno RSD za putarinu.");
+
+    GivePlayerMoney(playerid, -PUTARINA_CIJENA);
+    PlayerInfo[playerid][pNovac] = GetPlayerMoney(playerid);
+    new ime[MAX_PLAYER_NAME], file[128], poruka[128];
+    GetPlayerName(playerid, ime, sizeof(ime));
+    format(file, sizeof(file), "Korisnici/%s.ini", ime);
+    if(DOF2_FileExists(file))
+    {
+        DOF2_SetInt(file, "Novac", PlayerInfo[playerid][pNovac]);
+        DOF2_SaveFile();
+    }
+    PutarinaStanje[gate] = 1;
+    format(poruka, sizeof(poruka), "[PUTARINA]: Platili ste %d RSD. Rampa se dize; imate 15 sekundi za prolaz.", PUTARINA_CIJENA);
+    SendClientMessage(playerid, 0x33CCFFFF, poruka);
     return 1;
 }
 
@@ -423,15 +924,30 @@ public OnGameModeInit()
     SetTimer("CheckTemporaryNames", 60000, true);
     SetTimer("RentTick", 1000, true);
     SetTimer("UpdateLocationDisplays", 2000, true);
-    SetTimer("RotateHudMessage", 150000, true);
+    SetTimer("UpdateVehicleHud", 500, true);
+    SetTimer("UpdateVehicleSpeed", 150, true);
     AddPlayerClass(0, 1685.8652, -2331.2102, 13.5469, 90.2917, 0, 0, 0, 0, 0, 0);
     InitRevolutionHud();
+    UpdateHudTip(random(29));
     SetGameModeText("Balkan Revolution RP");
     ShowPlayerMarkers(PLAYER_MARKERS_MODE_OFF); // Bez kvadratica igraca na radaru/mapi.
     EnableStuntBonusForAll(0); // Bez stunt bonusa i njihovih poruka.
     UcitajServerMape();     // Ucitava objekte/mape iz Mape.inc
     UcitajBankuMapu();      // Banka iz BANKA-FINITO-HAHAH-1.txt
+    if(DOF2_FileExists(BANK_ROBBERY_FILE))
+    {
+        BankRobberyCooldownUntil = DOF2_GetInt(BANK_ROBBERY_FILE, "CooldownUntil");
+        if(BankRobberyCooldownUntil > gettime()) BankHackCooldownUntil = BankRobberyCooldownUntil;
+    }
+    SetTimer("BankHackTick", 1000, true);
+    CreateDynamic3DTextLabel("{FF4444}BEOGRADSKA BANKA{FFFFFF}\n/iskljucilasere - hakovanje sistema", 0xFFFFFFFF, 117.7143, 1689.2194, -12.4302, 12.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+    CreateDynamic3DTextLabel("{FF4444}TREZOR{FFFFFF}\n/postavidinamit", 0xFFFFFFFF, 116.2238, 1710.0984, -12.5103, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
+    CreateDynamic3DTextLabel("{33CCFF}NOVAC BANKE{FFFFFF}\n/robbank", 0xFFFFFFFF, 116.3219, 1725.2919, -12.6224, 10.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
     UcitajBankuEksterijer(); // Spoljasnja mapa banke
+    UcitajBGGranica(); // Granica Beograd - Sarajevo
+    SetTimer("PutarinaTick", 200, true);
+    CreateDynamic3DTextLabel("{33CCFF}/platiputarinu{FFFFFF}", 0xFFFFFFFF, 1787.20605468, 770.88598632, 11.96806526, 15.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 1, 0, 0);
+    CreateDynamic3DTextLabel("{33CCFF}/platiputarinu{FFFFFF}", 0xFFFFFFFF, 1803.46044921, 769.75775146, 11.97515678, 15.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 1, 0, 0);
     CreateDynamic3DTextLabel("{33CCFF}BANKA{FFFFFF}\nDa udjete u Banku pritisnite F", 0xFFFFFFFF, 1462.90759277, -1022.80725097, 24.53310317, 20.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
     CreateDynamic3DTextLabel("{33CCFF}Izlaz iz Banke{FFFFFF}\nPritisnite F", 0xFFFFFFFF, 153.79109191, 1702.71630859, -0.15856175, 20.0, INVALID_PLAYER_ID, INVALID_VEHICLE_ID, 0, 0, 0);
     UcitajVozilaServera();  // Ucitava vozila i motore iz Vozila.inc
@@ -601,8 +1117,18 @@ public OnGameModeInit()
 }
 public OnPlayerConnect(playerid)
 {
+    BankMoneyBag[playerid] = false;
+    JetpackDropGuardUntil[playerid] = 0;
     SetPVarInt(playerid, "BR_LoggedIn", 0);
+    // Ucitaj animacije pljacke prije nego sto igrac dodje do banke.
+    ApplyAnimation(playerid, "BOMBER", "null", 4.1, 0, 0, 0, 0, 0);
 
+    WantedPoints[playerid] = 0;
+    PendingDeathFine[playerid] = 0;
+    PendingDeathWanted[playerid] = 0;
+    DeathPenaltySerial[playerid]++;
+    IsHealing[playerid] = false;
+    format(WantedReason[playerid], 64, "Nema");
     LastHudMinute[playerid] = -1;
     LastLocationZone[playerid] = -999;
     HasMapMarker[playerid] = false;
@@ -669,7 +1195,19 @@ public KickPlayerDelayed(playerid)
 
 public OnPlayerDisconnect(playerid, reason)
 {
+    ApplyPendingDeathPenalty(playerid, false);
+    DeathPenaltySerial[playerid]++;
+    JetpackDropGuardUntil[playerid] = 0;
     HasMapMarker[playerid] = false;
+    if(BankHackPlayer == playerid) BankAbortHack();
+    BankLaserWarned[playerid] = false;
+    if(BankHackSuccessPlayer == playerid) BankHackSuccessPlayer = INVALID_PLAYER_ID;
+    if(BankRobber == playerid) BankAbortRobbery(false);
+    if(BankMoneyBag[playerid]) RemovePlayerAttachedObject(playerid, 9);
+    BankMoneyBag[playerid] = false;
+    BankLaserLastCheck[playerid] = 0;
+    BankLaserLastAlert[playerid] = 0;
+    BankLaserPrevValid[playerid] = false;
     MapTeleportSerial[playerid]++;
     StopPlayerRent(playerid, true);
     PlayerTextDrawDestroy(playerid, RentTextDraw[playerid]);
@@ -681,7 +1219,12 @@ public OnPlayerDisconnect(playerid, reason)
 
     if(DOF2_FileExists(file))
     {
-        if(GetPVarInt(playerid, "BR_LoggedIn")) DOF2_SetInt(file, "Novac", GetPlayerMoney(playerid));
+        if(GetPVarInt(playerid, "BR_LoggedIn"))
+        {
+            DOF2_SetInt(file, "Novac", GetPlayerMoney(playerid));
+            DOF2_SetInt(file, "DosijeWanted", WantedPoints[playerid]);
+            DOF2_SetString(file, "DosijeRazlog", WantedReason[playerid]);
+        }
         DOF2_SetInt(file, "AdminDuty", 0);
         DOF2_SetInt(file, "Lider", PlayerInfo[playerid][pLider]);
         DOF2_SetInt(file, "Skin", GetPlayerSkin(playerid));
@@ -697,16 +1240,16 @@ public OnPlayerDisconnect(playerid, reason)
 public OnPlayerSpawn(playerid)
 {
     ScriptJetpack[playerid] = false;
+    // GTA wanted level se resetuje tek nakon sto se zavrsi respawn.
+    SetTimerEx("FinishSpawnWantedReset", 750, false, "ii", playerid, DeathPenaltySerial[playerid]);
+    if(PendingDeathFine[playerid] > 0)
+        SetTimerEx("FinishDeathPenalty", 300, false, "ii", playerid, DeathPenaltySerial[playerid]);
     // Ako je igrac umro i nalazi se na lecenju u bolnici 5 sekundi (skin se ne mijenja)
     if(IsHealing[playerid])
     {
-        SetPlayerPos(playerid, -20.6776, 1481.3562, -3.3132);
-        SetPlayerFacingAngle(playerid, 179.0601);
+        // Bolnicka pozicija i skin su postavljeni prije respawna u OnPlayerDeath.
         SetPlayerInterior(playerid, 0);
         SetPlayerVirtualWorld(playerid, 0);
-
-        // Ovdje vracamo skin koji je imao prije smrti da se ne bi mijenjao
-        SetPlayerSkin(playerid, PlayerCurrentSkin[playerid]);
 
         SendClientMessage(playerid, 0xFF0000FF, "[BOLNICA]: Nalazite se na lecenju 5 sekundi...");
         GameTextForPlayer(playerid, "~r~Lijecenje u toku...~n~~w~Trajanje: ~g~5 sekundi", 5000, 3);
@@ -740,6 +1283,8 @@ public OnPlayerSpawn(playerid)
             sazvani_skin = DOF2_GetInt(file, "Skin");
         }
     }
+    if(sazvani_skin < 0 || sazvani_skin > 311 || sazvani_skin == 74)
+        sazvani_skin = admin_lvl > 0 ? 294 : 26;
 
     // --- PROVERA DA LI JE LIDER U Lideri.ini ---
     new lideri_file[64] = "BalkanRP/Lideri.ini";
@@ -767,9 +1312,8 @@ public OnPlayerSpawn(playerid)
 
     if(admin_lvl > 0)
     {
-        SetPlayerSkin(playerid, 294);
-        DOF2_SetInt(file, "Skin", 294);
-        DOF2_SaveFile();
+        // /setskin je trajan i za admine; spawn vise ne prepisuje spremljeni skin.
+        SetPlayerSkin(playerid, sazvani_skin);
 
         if(admin_lvl >= RANK_SUVLASNIK)
         {
@@ -828,7 +1372,6 @@ public OnPlayerSpawn(playerid)
     }
 
     ClearAnimations(playerid);
-    ApplyAnimation(playerid, "ped", "NULL", 0.0, 0, 0, 0, 0, 0);
 
     ShowRevolutionHud(playerid);
 
@@ -1018,6 +1561,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
                     SpawnPlayer(playerid);
                     PrikaziPorukuDobrodoslice(playerid);
                     SetPVarInt(playerid, "BR_LoggedIn", 1);
+                    LoadWantedState(playerid);
                 }
                 else
                 {
@@ -1077,6 +1621,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
             ResetPlayerMoney(playerid);
             GivePlayerMoney(playerid, 5000);
             SetPVarInt(playerid, "BR_LoggedIn", 1);
+            LoadWantedState(playerid);
             PlayerZlato[playerid] = 0;
             IgracKrediti[playerid] = 0;
             UpdateZlatoTD(playerid);
@@ -1170,6 +1715,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
                     SpawnPlayer(playerid);
                     PrikaziPorukuDobrodoslice(playerid);
                     SetPVarInt(playerid, "BR_LoggedIn", 1);
+                    LoadWantedState(playerid);
                 }
                 else
                 {
@@ -1207,6 +1753,7 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
                     SpawnPlayer(playerid);
                     PrikaziPorukuDobrodoslice(playerid);
                     SetPVarInt(playerid, "BR_LoggedIn", 1);
+                    LoadWantedState(playerid);
                 }
                 else
                 {
@@ -2116,9 +2663,9 @@ CMD:stats(playerid, params[])
         {00BFFF}Osiguranja: {FFFFFF}[23]\n\
         {00BFFF}RolePlay Rank: {FFFFFF}[0]\n\
         {FFFFFF}----------- {FF0000}Dosije {FFFFFF}-----------\n\
-        {00BFFF}Wanted: {FFFFFF}[0]         {00BFFF}Ubistva: {FFFFFF}[67]\n\
+        {00BFFF}Wanted: {FFFFFF}[%d]         {00BFFF}Ubistva: {FFFFFF}[67]\n\
         {00BFFF}Smrti: {FFFFFF}[137]              {00BFFF}Zlocini: {FFFFFF}[59]\n",
-        rank_str, job_ime
+        rank_str, job_ime, WantedPoints[playerid]
     );
     strcat(string, s5, sizeof(string));
 
@@ -2138,10 +2685,11 @@ CMD:stats(playerid, params[])
     format(s7, sizeof(s7),
         "{00BFFF}Neobradjena Droga: {FFFFFF}[0]  {00BFFF}Droga: {FFFFFF}[0]\n\
         {00BFFF}Vrecice Semena: {FFFFFF}[49]          {00BFFF}Materijali: {FFFFFF}[0]\n\
-        {00BFFF}Alat: {FFFFFF}[0]                       {00BFFF}Dinamit: {FFFFFF}[0]\n\
+        {00BFFF}Alat: {FFFFFF}[0]                       {00BFFF}Dinamit: {FFFFFF}[%d]\n\
         {FFFFFF}----------- {FF0000}Skillovi {FFFFFF}-----------\n\
         {00BFFF}News Reporter: {FFFFFF}[1]\n\
-        {00BFFF}Donate Poeni: {FFFFFF}[885]\n"
+        {00BFFF}Donate Poeni: {FFFFFF}[885]\n",
+        DOF2_GetInt(file, "Dinamit")
     );
     strcat(string, s7, sizeof(string));
 
@@ -2201,6 +2749,576 @@ stock IsValidRPName(const name[])
     // Mora tacno postojati jedna donja crta
     return (underscores == 1);
 }
+stock bool:BankPlayerHasWeapon(playerid)
+{
+    new weaponid, ammo;
+    for(new slot = 1; slot <= 12; slot++)
+    {
+        GetPlayerWeaponData(playerid, slot, weaponid, ammo);
+        if(weaponid >= 1 && weaponid <= 39 && ammo > 0) return true;
+    }
+    return false;
+}
+
+stock bool:BankHackerStillHere(playerid)
+{
+    if(!IsPlayerConnected(playerid) || GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0) return false;
+    if(IsPlayerInAnyVehicle(playerid)) return false;
+    return (IsPlayerInRangeOfPoint(playerid, 0.85, BankHackStartX, BankHackStartY, BankHackStartZ) != 0);
+}
+
+stock BankAbortHack()
+{
+    if(BankHackPlayer == INVALID_PLAYER_ID) return 0;
+    if(IsPlayerConnected(BankHackPlayer))
+    {
+        GameTextForPlayer(BankHackPlayer, "~r~HAKOVANJE PREKINUTO", 3000, 3);
+        SendClientMessage(BankHackPlayer, 0xFF7777FF, "[BANKA]: Pomjerili ste se. Hakovanje je prekinuto; novo je moguce za 10 minuta.");
+    }
+    BankHackPlayer = INVALID_PLAYER_ID;
+    BankHackCooldownUntil = gettime() + 600;
+    return 1;
+}
+
+stock BankAbortRobbery(bool:killed)
+{
+    if(BankRobber == INVALID_PLAYER_ID) return 0;
+    new robber = BankRobber;
+    BankRobber = INVALID_PLAYER_ID;
+    BankRobberyUntil = 0;
+    BankRobberyFinishedThisCycle = true;
+    BankRobberyCooldownUntil = gettime() + 1800;
+    BankResetAt = gettime() + 480; // Vrata i laseri se vracaju poslije 8 minuta.
+    BankHackCooldownUntil = BankRobberyCooldownUntil;
+    if(!DOF2_FileExists(BANK_ROBBERY_FILE)) DOF2_CreateFile(BANK_ROBBERY_FILE);
+    DOF2_SetInt(BANK_ROBBERY_FILE, "CooldownUntil", BankRobberyCooldownUntil);
+    DOF2_SaveFile();
+    if(IsPlayerConnected(robber) && !killed)
+    {
+        TogglePlayerControllable(robber, 1);
+        ClearAnimations(robber);
+        SendClientMessage(robber, 0xFF7777FF, "[BANKA]: Pljacka je prekinuta. Banka je zatvorena narednih 30 minuta.");
+    }
+    if(killed)
+        SendClientMessageToAll(0xFF7777FF, "{FF0000}[VESTI] {FF7777}Pljacka Beogradske Banke je uspesno obustavljena! Policija, Zandarmerija i Vojska osiguravaju banku.");
+    else
+        SendClientMessageToAll(0xFF7777FF, "{FF0000}[VESTI] {FF7777}Pljacka Beogradske Banke je prekinuta. Banka je zatvorena narednih 30 minuta.");
+    return 1;
+}
+
+forward BankRobberyLoopAnim(playerid);
+public BankRobberyLoopAnim(playerid)
+{
+    if(BankRobber != playerid || !IsPlayerConnected(playerid)) return 1;
+    ApplyAnimation(playerid, "BOMBER", "BOM_Plant_Loop", 4.1, 1, 1, 1, 1, 0, 1);
+    return 1;
+}
+
+stock UpdateWantedHint(playerid)
+{
+    if(WantedPoints[playerid] <= 0)
+    {
+        PlayerTextDrawHide(playerid, TD_WantedHint[playerid]);
+        return 1;
+    }
+    new label[80];
+    format(label, sizeof(label), "IMATE %d WANTED LEVELA  /DOSIJE", WantedPoints[playerid]);
+    PlayerTextDrawSetString(playerid, TD_WantedHint[playerid], label);
+    PlayerTextDrawShow(playerid, TD_WantedHint[playerid]);
+    return 1;
+}
+
+stock LoadWantedState(playerid)
+{
+    new name[MAX_PLAYER_NAME], file[128];
+    GetPlayerName(playerid, name, sizeof(name));
+    format(file, sizeof(file), "Korisnici/%s.ini", name);
+    WantedPoints[playerid] = 0;
+    format(WantedReason[playerid], 64, "Nema");
+    if(DOF2_FileExists(file))
+    {
+        if(DOF2_IsSet(file, "DosijeWanted")) WantedPoints[playerid] = DOF2_GetInt(file, "DosijeWanted");
+        if(DOF2_IsSet(file, "DosijeRazlog"))
+            format(WantedReason[playerid], 64, "%s", DOF2_GetString(file, "DosijeRazlog"));
+    }
+    if(WantedPoints[playerid] < 0) WantedPoints[playerid] = 0;
+    if(WantedPoints[playerid] > 1000) WantedPoints[playerid] = 1000;
+    // Broj se cuva u dosijeu; GTA zvjezdice se ne prikazuju preko gornjeg HUD-a.
+    SetPlayerWantedLevel(playerid, 0);
+    UpdateWantedHint(playerid);
+    return 1;
+}
+
+stock AddWantedPoints(playerid, amount, const reason[])
+{
+    if(!IsPlayerConnected(playerid) || !GetPVarInt(playerid, "BR_LoggedIn")) return 0;
+    new nativeWanted = GetPlayerWantedLevel(playerid);
+    if(nativeWanted > WantedPoints[playerid]) WantedPoints[playerid] = nativeWanted;
+    WantedPoints[playerid] += amount;
+    if(WantedPoints[playerid] > 1000) WantedPoints[playerid] = 1000;
+    format(WantedReason[playerid], 64, "%s", reason);
+    // Broj se cuva u dosijeu; GTA zvjezdice se ne prikazuju preko gornjeg HUD-a.
+    SetPlayerWantedLevel(playerid, 0);
+    UpdateWantedHint(playerid);
+
+    new name[MAX_PLAYER_NAME], file[128], message[160];
+    GetPlayerName(playerid, name, sizeof(name));
+    format(file, sizeof(file), "Korisnici/%s.ini", name);
+    if(DOF2_FileExists(file))
+    {
+        DOF2_SetInt(file, "DosijeWanted", WantedPoints[playerid]);
+        DOF2_SetString(file, "DosijeRazlog", WantedReason[playerid]);
+        DOF2_SaveFile();
+    }
+    format(message, sizeof(message), "{FF7777}[DOSIJE] Dobili ste %d Wanted Levela. [Razlog] %s. Ukupno: %d. /dosije", amount, reason, WantedPoints[playerid]);
+    SendClientMessage(playerid, 0xFF7777FF, message);
+    return 1;
+}
+
+stock IsBankStateOrganization(playerid)
+{
+    new org = PlayerOrg[playerid];
+    if(PlayerInfo[playerid][pLider] > 0) org = PlayerInfo[playerid][pLider];
+    return (org == 1 || org == 2 || org == 3 || org == 5 || org == 6 || org == 7);
+}
+
+stock BankCheckLaserForPlayer(playerid)
+{
+    if(BankLasersOff || !IsPlayerConnected(playerid) || !GetPVarInt(playerid, "BR_LoggedIn"))
+    {
+        BankLaserPrevValid[playerid] = false;
+        return 0;
+    }
+    new tick = GetTickCount();
+    if(tick - BankLaserLastCheck[playerid] < 180) return 0;
+    BankLaserLastCheck[playerid] = tick;
+    if(GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0)
+    {
+        BankLaserWarned[playerid] = false;
+        BankLaserPrevValid[playerid] = false;
+        return 0;
+    }
+    new Float:px, Float:py, Float:pz;
+    GetPlayerPos(playerid, px, py, pz);
+    // Cetiri vidljiva snopa idu izmedju parova objekata kroz cijeli hodnik.
+    // Provjeri sadasnju poziciju i putanju od proslog uzorka da trcanje ne preskoci alarm.
+    new Float:beamMinX[4] = {92.8124, 98.2916, 95.6615, 99.1312};
+    new Float:beamMaxX[4] = {111.4826, 111.7345, 110.9737, 111.1882};
+    new Float:beamY[4] = {1699.0545, 1694.6413, 1703.2066, 1707.6756};
+    new Float:beamZ[4] = {-13.4650, -13.4650, -13.4650, -13.4650};
+    new bool:touched = false;
+    for(new i = 0; i < 4; i++)
+    {
+        if(px >= beamMinX[i] - 0.55 && px <= beamMaxX[i] + 0.55 &&
+            floatabs(py - beamY[i]) <= 0.55 && floatabs(pz - beamZ[i]) <= 1.25)
+        {
+            touched = true;
+            break;
+        }
+        if(!BankLaserPrevValid[playerid]) continue;
+        new Float:dx = px - BankLaserPrevX[playerid];
+        new Float:dy = py - BankLaserPrevY[playerid];
+        new Float:dz = pz - BankLaserPrevZ[playerid];
+        if(dx * dx + dy * dy + dz * dz > 16.0 || floatabs(dy) < 0.001) continue;
+        new Float:t = (beamY[i] - BankLaserPrevY[playerid]) / dy;
+        if(t < 0.0 || t > 1.0) continue;
+        new Float:crossX = BankLaserPrevX[playerid] + t * dx;
+        new Float:crossZ = BankLaserPrevZ[playerid] + t * dz;
+        if(crossX >= beamMinX[i] - 0.55 && crossX <= beamMaxX[i] + 0.55 &&
+            floatabs(crossZ - beamZ[i]) <= 1.25)
+        {
+            touched = true;
+            break;
+        }
+    }
+    BankLaserPrevX[playerid] = px;
+    BankLaserPrevY[playerid] = py;
+    BankLaserPrevZ[playerid] = pz;
+    BankLaserPrevValid[playerid] = true;
+    if(!touched) { BankLaserWarned[playerid] = false; return 0; }
+    if(!BankLaserWarned[playerid])
+    {
+        BankLaserWarned[playerid] = true;
+        AddWantedPoints(playerid, 6, "Dodirivanje sigurnosnog lasera");
+        if(gettime() >= BankLaserLastAlert[playerid])
+        {
+            BankLaserLastAlert[playerid] = gettime() + 10;
+            SendClientMessageToAll(0xFF7777FF, "{FF0000}[VESTI] {FF7777}Neko pokusava da opljacka Beogradsku Banku, molimo da Policija intervenise.");
+        }
+    }
+    return 1;
+}
+
+stock ResetBankCycle(bool:clearCooldown)
+{
+    if(BankHackPlayer != INVALID_PLAYER_ID && IsPlayerConnected(BankHackPlayer))
+        SendClientMessage(BankHackPlayer, 0xFF7777FF, "[BANKA]: Administrator je resetovao banku. Hakovanje je prekinuto.");
+    BankHackPlayer = INVALID_PLAYER_ID;
+    BankHackStartedAt = 0;
+    BankHackSuccessPlayer = INVALID_PLAYER_ID;
+
+    if(BankRobber != INVALID_PLAYER_ID && IsPlayerConnected(BankRobber))
+    {
+        TogglePlayerControllable(BankRobber, 1);
+        ClearAnimations(BankRobber);
+        SendClientMessage(BankRobber, 0xFF7777FF, "[BANKA]: Administrator je resetovao banku. Pljacka je prekinuta.");
+    }
+    BankRobber = INVALID_PLAYER_ID;
+    BankRobberyUntil = 0;
+
+    StopObject(BankaVrata[0]);
+    StopObject(BankaVrata[1]);
+    StopObject(BankaTrezorVrata);
+    SetObjectPos(BankaVrata[0], 115.434486, 1690.312866, -13.214599);
+    SetObjectRot(BankaVrata[0], 0.0, 0.0, 0.0);
+    SetObjectPos(BankaVrata[1], 117.156379, 1690.316406, -13.214599);
+    SetObjectRot(BankaVrata[1], 0.0, 0.0, 180.0);
+    SetObjectPos(BankaTrezorVrata, 116.217002, 1710.814819, -12.734299);
+    SetObjectRot(BankaTrezorVrata, 0.0, 0.0, 180.0);
+    if(BankDynamiteObject)
+    {
+        DestroyObject(BankDynamiteObject);
+        BankDynamiteObject = 0;
+    }
+    BankDynamiteUntil = 0;
+    BankVaultDoorDown = false;
+
+    if(BankLasersOff)
+    {
+        new Float:x, Float:y, Float:z;
+        for(new i = 0; i < sizeof(BankaLaseri); i++)
+        {
+            GetObjectPos(BankaLaseri[i], x, y, z);
+            SetObjectPos(BankaLaseri[i], x, y, BankLaserOriginalZ[i]);
+        }
+    }
+    BankDoorsOpen = false;
+    BankLasersOff = false;
+    BankLaserDisableAt = 0;
+
+    for(new playerid = 0; playerid < MAX_PLAYERS; playerid++)
+    {
+        if(clearCooldown && IsPlayerConnected(playerid) && BankMoneyBag[playerid])
+            RemovePlayerAttachedObject(playerid, 9);
+        if(clearCooldown) BankMoneyBag[playerid] = false;
+        BankLaserWarned[playerid] = false;
+        BankLaserPrevValid[playerid] = false;
+        BankLaserLastCheck[playerid] = 0;
+        BankLaserLastAlert[playerid] = 0;
+    }
+    BankResetAt = 0;
+    // Automatsko zatvaranje ne smije ukinuti zabranu nove pljacke od 30 minuta.
+    if(clearCooldown || BankRobberyCooldownUntil <= gettime())
+    {
+        BankRobberyFinishedThisCycle = false;
+        BankRobberyCooldownUntil = 0;
+        if(!DOF2_FileExists(BANK_ROBBERY_FILE)) DOF2_CreateFile(BANK_ROBBERY_FILE);
+        DOF2_SetInt(BANK_ROBBERY_FILE, "CooldownUntil", 0);
+        DOF2_SaveFile();
+    }
+    if(clearCooldown || BankHackCooldownUntil <= gettime()) BankHackCooldownUntil = 0;
+    return 1;
+}
+
+forward BankHackTick();
+public BankHackTick()
+{
+    new now = gettime();
+    if(BankHackPlayer != INVALID_PLAYER_ID)
+    {
+        if(!BankHackerStillHere(BankHackPlayer)) BankAbortHack();
+        else
+        {
+            new left = 60 - (now - BankHackStartedAt);
+            if(left > 0)
+            {
+                new countText[64];
+                format(countText, sizeof(countText), "~b~HAKOVANJE BANKE~n~~w~%d sekundi", left);
+                GameTextForPlayer(BankHackPlayer, countText, 1200, 3);
+            }
+            else
+            {
+                new hacker = BankHackPlayer;
+                BankHackPlayer = INVALID_PLAYER_ID;
+                BankDoorsOpen = true;
+                BankLaserDisableAt = now + 15;
+                BankHackSuccessPlayer = hacker;
+                BankResetAt = now + 600;
+                BankHackCooldownUntil = BankResetAt;
+                BankRobberyFinishedThisCycle = false;
+                MoveObject(BankaVrata[0], 114.294486, 1690.312866, -13.214599, 1.0);
+                MoveObject(BankaVrata[1], 118.2964, 1690.3164, -13.2146, 1.0);
+                GameTextForPlayer(hacker, "~g~USPJESNO HAKOVANJE", 4000, 3);
+                SendClientMessage(hacker, 0x66FF66FF, "[BANKA]: Vrata su otvorena. Sacekajte jos 15 sekundi da se laseri ugase.");
+            }
+        }
+    }
+    if(BankDoorsOpen && !BankLasersOff && BankLaserDisableAt && now < BankLaserDisableAt && BankHackSuccessPlayer != INVALID_PLAYER_ID && IsPlayerConnected(BankHackSuccessPlayer))
+    {
+        new laserText[64];
+        format(laserText, sizeof(laserText), "~y~GASENJE LASERA~n~~w~%d sekundi", BankLaserDisableAt - now);
+        GameTextForPlayer(BankHackSuccessPlayer, laserText, 1200, 3);
+    }
+    if(BankDoorsOpen && !BankLasersOff && BankLaserDisableAt && now >= BankLaserDisableAt)
+    {
+        new Float:x, Float:y, Float:z;
+        for(new i = 0; i < sizeof(BankaLaseri); i++)
+        {
+            GetObjectPos(BankaLaseri[i], x, y, z);
+            BankLaserOriginalZ[i] = z;
+            SetObjectPos(BankaLaseri[i], x, y, z - 50.0);
+        }
+        BankLasersOff = true;
+        BankHackSuccessPlayer = INVALID_PLAYER_ID;
+        for(new playerid = 0; playerid < MAX_PLAYERS; playerid++) BankLaserWarned[playerid] = false;
+        SendClientMessageToAll(0x99FF99FF, "[BANKA]: Sigurnosni laseri u banci su ugaseni.");
+    }
+    if(BankDynamiteUntil && now < BankDynamiteUntil)
+    {
+        new warning[64];
+        format(warning, sizeof(warning), "~r~EKSPLOZIJA ZA %d SEKUNDI", BankDynamiteUntil - now);
+        for(new p = 0; p < MAX_PLAYERS; p++)
+            if(IsPlayerConnected(p) && GetPlayerInterior(p) == 0 && GetPlayerVirtualWorld(p) == 0 && IsPlayerInRangeOfPoint(p, 20.0, 116.2170, 1710.8148, -13.3103))
+                GameTextForPlayer(p, warning, 1200, 3);
+    }
+    if(BankDynamiteUntil && now >= BankDynamiteUntil)
+    {
+        BankDynamiteUntil = 0;
+        if(BankDynamiteObject) { DestroyObject(BankDynamiteObject); BankDynamiteObject = 0; }
+        for(new p = 0; p < MAX_PLAYERS; p++)
+        {
+            if(!IsPlayerConnected(p) || GetPlayerInterior(p) != 0 || GetPlayerVirtualWorld(p) != 0) continue;
+            new Float:distance = GetPlayerDistanceFromPoint(p, 116.2170, 1710.8148, -13.3103);
+            if(distance > 25.0) continue;
+            CreateExplosionForPlayer(p, 116.2170, 1710.8148, -13.3103, 1, 8.0);
+            new Float:damage = 0.0, Float:health;
+            if(distance < 2.5) damage = 100.0;
+            else if(distance < 5.0) damage = 70.0;
+            else if(distance < 8.0) damage = 40.0;
+            else if(distance < 12.0) damage = 20.0;
+            if(damage > 0.0)
+            {
+                GetPlayerHealth(p, health);
+                SetPlayerHealth(p, health - damage > 0.0 ? health - damage : 0.0);
+            }
+        }
+        MoveObject(BankaTrezorVrata, 116.2275, 1712.4453, -14.2743, 2.0, 90.0, 0.0, 180.0);
+        BankVaultDoorDown = true;
+        SendClientMessageToAll(0xFF7777FF, "{FF0000}[VESTI] {FF7777}Eksplozija u Beogradskoj Banci! Vrata trezora su pala.");
+    }
+    if(BankRobber != INVALID_PLAYER_ID)
+    {
+        if(!IsPlayerConnected(BankRobber) || GetPlayerInterior(BankRobber) != 0 || GetPlayerVirtualWorld(BankRobber) != 0 ||
+            !IsPlayerInRangeOfPoint(BankRobber, 3.0, 116.3219, 1725.2919, -13.4224)) BankAbortRobbery(false);
+        else if(now < BankRobberyUntil)
+        {
+            new robberyText[64];
+            format(robberyText, sizeof(robberyText), "~b~PLJACKA BANKE~n~~w~%d:%02d", (BankRobberyUntil - now) / 60, (BankRobberyUntil - now) % 60);
+            GameTextForPlayer(BankRobber, robberyText, 1200, 3);
+        }
+        else
+        {
+            new robber = BankRobber;
+            BankRobber = INVALID_PLAYER_ID;
+            BankRobberyUntil = 0;
+            BankRobberyFinishedThisCycle = true;
+            TogglePlayerControllable(robber, 1);
+            ClearAnimations(robber);
+            new reward = 10000 + random(65001);
+            new robberName[MAX_PLAYER_NAME], robberFile[128], robberyNews[144];
+            GetPlayerName(robber, robberName, sizeof(robberName));
+            format(robberFile, sizeof(robberFile), "Korisnici/%s.ini", robberName);
+            GivePlayerMoney(robber, reward);
+            PlayerInfo[robber][pNovac] = GetPlayerMoney(robber);
+            if(DOF2_FileExists(robberFile))
+            {
+                DOF2_SetInt(robberFile, "Novac", PlayerInfo[robber][pNovac]);
+                DOF2_SaveFile();
+            }
+            format(robberyNews, sizeof(robberyNews), "{FF0000}[VESTI] {FF7777}Banka je opljackana i ukradeno je %d RSD.", reward);
+            SendClientMessageToAll(0xFF7777FF, robberyNews);
+            SetPlayerAttachedObject(robber, 9, 1550, 1, 0.0, -0.22, 0.0, 0.0, 90.0, 0.0);
+            BankMoneyBag[robber] = true;
+            BankRobberyCooldownUntil = now + 1800;
+            BankResetAt = now + 480; // Banka se fizicki zatvara za 8 minuta.
+            BankHackCooldownUntil = BankRobberyCooldownUntil;
+            if(!DOF2_FileExists(BANK_ROBBERY_FILE)) DOF2_CreateFile(BANK_ROBBERY_FILE);
+            DOF2_SetInt(BANK_ROBBERY_FILE, "CooldownUntil", BankRobberyCooldownUntil);
+            DOF2_SaveFile();
+            GameTextForPlayer(robber, "~g~BANKA OPLJACKANA", 5000, 3);
+            SendClientMessage(robber, 0x66FF66FF, "[BANKA]: Uspjesno ste uzeli novac. Ruksak je na ledjima; banka je zakljucana narednih 30 minuta.");
+        }
+    }
+    if(BankDoorsOpen && BankResetAt && now >= BankResetAt) ResetBankCycle(false);
+    if(BankRobberyCooldownUntil && now >= BankRobberyCooldownUntil)
+    {
+        BankRobberyCooldownUntil = 0;
+        BankRobberyFinishedThisCycle = false;
+        for(new playerid = 0; playerid < MAX_PLAYERS; playerid++)
+        {
+            if(!BankMoneyBag[playerid]) continue;
+            if(IsPlayerConnected(playerid)) RemovePlayerAttachedObject(playerid, 9);
+            BankMoneyBag[playerid] = false;
+        }
+        if(BankHackCooldownUntil <= now) BankHackCooldownUntil = 0;
+        if(DOF2_FileExists(BANK_ROBBERY_FILE))
+        {
+            DOF2_SetInt(BANK_ROBBERY_FILE, "CooldownUntil", 0);
+            DOF2_SaveFile();
+        }
+    }
+    for(new playerid = 0; playerid < MAX_PLAYERS; playerid++)
+        if(IsPlayerConnected(playerid)) BankCheckLaserForPlayer(playerid);
+    return 1;
+}
+
+CMD:iskljucilasere(playerid, params[])
+{
+    if(!GetPVarInt(playerid, "BR_LoggedIn")) return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Prvo se prijavite na nalog.");
+    // /setleader odmah upisuje pLider, dok se PlayerOrg inace osvjezi tek pri spawnu.
+    new memberOrg = PlayerOrg[playerid];
+    new leaderOrg = PlayerInfo[playerid][pLider];
+    if((memberOrg < 13 || memberOrg > 16) && (leaderOrg < 13 || leaderOrg > 16))
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Hakovanje je dostupno samo clanovima i liderima organizacija 13-16.");
+    if(!BankPlayerHasWeapon(playerid)) return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Za hakovanje morate imati oruzje.");
+    if(GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0 ||
+        !IsPlayerInRangeOfPoint(playerid, 2.5, 117.7143, 1689.2194, -13.4302) || IsPlayerInAnyVehicle(playerid))
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Dodjite do mjesta za hakovanje u banci.");
+    if(BankHackPlayer != INVALID_PLAYER_ID) return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Hakovanje je vec u toku.");
+    if(BankDoorsOpen || BankHackCooldownUntil > gettime())
+    {
+        new msg[96], left = BankHackCooldownUntil - gettime();
+        if(left < 1) left = 1;
+        format(msg, sizeof(msg), "[BANKA]: Sacekajte jos %d minuta i %d sekundi.", left / 60, left % 60);
+        return SendClientMessage(playerid, 0xFF7777FF, msg);
+    }
+    GetPlayerPos(playerid, BankHackStartX, BankHackStartY, BankHackStartZ);
+    BankHackPlayer = playerid;
+    BankHackStartedAt = gettime();
+    SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Hakovanje traje 60 sekundi. Ako se pomjerite, hakovanje se prekida i svi cekaju 10 minuta.");
+    GameTextForPlayer(playerid, "~b~HAKOVANJE BANKE~n~~w~60 sekundi", 1200, 3);
+    return 1;
+}
+
+CMD:postavidinamit(playerid, params[])
+{
+    #pragma unused params
+    if(!GetPVarInt(playerid, "BR_LoggedIn")) return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Prvo se prijavite.");
+    if(!BankDoorsOpen || !BankLasersOff || BankRobberyFinishedThisCycle || BankRobberyCooldownUntil > gettime())
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Prvo hakujte banku i sacekajte da se laseri ugase.");
+    if(BankDynamiteUntil || BankVaultDoorDown) return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Vrata trezora su vec minirana ili otvorena.");
+    if(GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0 || IsPlayerInAnyVehicle(playerid) ||
+        !IsPlayerInRangeOfPoint(playerid, 2.5, 116.2238, 1710.0984, -13.3103))
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Stanite kod vrata trezora za /postavidinamit.");
+    new file[128], name[MAX_PLAYER_NAME];
+    GetPlayerName(playerid, name, sizeof(name));
+    format(file, sizeof(file), "Korisnici/%s.ini", name);
+    if(!DOF2_FileExists(file) || DOF2_GetInt(file, "Dinamit") < 1)
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Nemate dinamit u inventaru.");
+    DOF2_SetInt(file, "Dinamit", DOF2_GetInt(file, "Dinamit") - 1);
+    DOF2_SaveFile();
+    BankDynamiteObject = CreateObject(1654, 116.2170, 1710.45, -13.25, 0.0, 0.0, 90.0, 100.0);
+    BankDynamiteUntil = gettime() + 15;
+    BankResetAt = BankDynamiteUntil + 600;
+    BankHackCooldownUntil = BankResetAt;
+    ApplyAnimation(playerid, "BOMBER", "BOM_Plant_Crouch_In", 4.1, 0, 0, 0, 0, 0, 1);
+    SendClientMessageToAll(0xFF7777FF, "{FF0000}[VESTI] {FF7777}Postavljen je dinamit u Beogradskoj Banci! Udaljite se od vrata trezora, eksplozija za 15 sekundi.");
+    return 1;
+}
+
+CMD:robbank(playerid, params[])
+{
+    #pragma unused params
+    if(!GetPVarInt(playerid, "BR_LoggedIn")) return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Prvo se prijavite.");
+    if(!BankDoorsOpen || !BankLasersOff || !BankVaultDoorDown)
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Prvo otvorite trezor i ugasite lasere.");
+    if(BankRobber != INVALID_PLAYER_ID) return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Jedan igrac vec pljacka banku.");
+    if(BankRobberyFinishedThisCycle || BankRobberyCooldownUntil > gettime())
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Banka je zatvorena. Sacekajte 30 minuta prije nove pljacke.");
+    if(GetPlayerInterior(playerid) != 0 || GetPlayerVirtualWorld(playerid) != 0 || IsPlayerInAnyVehicle(playerid) ||
+        !IsPlayerInRangeOfPoint(playerid, 2.5, 116.3219, 1725.2919, -13.4224))
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Stanite kod novca u trezoru za /robbank.");
+    // Pljackas dobija 6, ostali osumnjiceni u donjem dijelu banke po 4.
+    AddWantedPoints(playerid, 6, "Pljacka Beogradske banke");
+    for(new nearby = 0; nearby < MAX_PLAYERS; nearby++)
+    {
+        if(nearby == playerid || !IsPlayerConnected(nearby) || !GetPVarInt(nearby, "BR_LoggedIn")) continue;
+        if(IsBankStateOrganization(nearby)) continue;
+        if(GetPlayerInterior(nearby) != 0 || GetPlayerVirtualWorld(nearby) != 0) continue;
+        new Float:x, Float:y, Float:z;
+        GetPlayerPos(nearby, x, y, z);
+        if(x >= 85.0 && x <= 150.0 && y >= 1680.0 && y <= 1740.0 && z >= -18.0 && z <= -8.0)
+            AddWantedPoints(nearby, 4, "Prisustvo pljacki banke");
+    }
+    BankRobber = playerid;
+    BankRobberyUntil = gettime() + 300;
+    BankResetAt = BankRobberyUntil + 600;
+    BankHackCooldownUntil = BankResetAt;
+    TogglePlayerControllable(playerid, 0);
+    ApplyAnimation(playerid, "BOMBER", "BOM_Plant_Crouch_In", 4.1, 0, 1, 1, 1, 0, 1);
+    SetTimerEx("BankRobberyLoopAnim", 1500, false, "i", playerid);
+    SendClientMessageToAll(0xFF7777FF, "{FF0000}[VESTI] {FF7777}U toku je pljacka Beogradske Banke, molimo policiju da intervenise.");
+    SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Skupljanje novca traje 5 minuta. Ne mozete se pomjerati.");
+    return 1;
+}
+
+CMD:dosije(playerid, params[])
+{
+    #pragma unused params
+    if(!GetPVarInt(playerid, "BR_LoggedIn"))
+        return SendClientMessage(playerid, 0xFF7777FF, "[DOSIJE] Prvo se prijavite na nalog.");
+    new message[80];
+    format(message, sizeof(message), "{FF7777}Imate %d Wanted Levela", WantedPoints[playerid]);
+    ShowPlayerDialog(playerid, DIALOG_DOSIJE, DIALOG_STYLE_MSGBOX, "{FF7777}DOSIJE", message, "Zatvori", "");
+    return 1;
+}
+
+CMD:resetbanku(playerid, params[])
+{
+    #pragma unused params
+    new file[128], name[MAX_PLAYER_NAME];
+    GetPlayerName(playerid, name, sizeof(name));
+    format(file, sizeof(file), "Korisnici/%s.ini", name);
+    new rank = DOF2_FileExists(file) ? DOF2_GetInt(file, "Admin") : 0;
+    if(!IsPlayerAdmin(playerid) && (!GetPVarInt(playerid, "BR_LoggedIn") || rank < 6 || rank > 9))
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Potreban je admin rank 6-9 ili RCON admin.");
+
+    ResetBankCycle(true);
+    SendClientMessage(playerid, 0x66FF66FF, "[BANKA]: Banka je resetovana. Pljacka je odmah ponovo dostupna.");
+    return 1;
+}
+
+CMD:dajdinamit(playerid, params[])
+{
+    new file[128], name[MAX_PLAYER_NAME];
+    GetPlayerName(playerid, name, sizeof(name));
+    format(file, sizeof(file), "Korisnici/%s.ini", name);
+    new rank = DOF2_FileExists(file) ? DOF2_GetInt(file, "Admin") : 0;
+    if(!IsPlayerAdmin(playerid) && (!GetPVarInt(playerid, "BR_LoggedIn") || rank < 6 || rank > 9))
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Potreban je admin rank 6-9 ili RCON admin.");
+
+    new targetid;
+    if(sscanf(params, "u", targetid))
+        return SendClientMessage(playerid, 0xFF7777FF, "[KORISTENJE]: /dajdinamit [ID/Ime]");
+    if(!IsPlayerConnected(targetid))
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Taj igrac nije online.");
+
+    new targetName[MAX_PLAYER_NAME], targetFile[128], msg[144];
+    GetPlayerName(targetid, targetName, sizeof(targetName));
+    format(targetFile, sizeof(targetFile), "Korisnici/%s.ini", targetName);
+    if(!DOF2_FileExists(targetFile))
+        return SendClientMessage(playerid, 0xFF7777FF, "[BANKA]: Igrac nema registrovan nalog.");
+
+    new total = DOF2_GetInt(targetFile, "Dinamit") + 1;
+    DOF2_SetInt(targetFile, "Dinamit", total);
+    DOF2_SaveFile();
+    format(msg, sizeof(msg), "[BANKA]: Dali ste dinamit igracu %s. Sada ima %d komad(a).", targetName, total);
+    SendClientMessage(playerid, 0x66FF66FF, msg);
+    format(msg, sizeof(msg), "[BANKA]: Dobili ste dinamit! Sada imate %d komad(a). Pogledajte /inventory i koristite /postavidinamit kod trezora.", total);
+    SendClientMessage(targetid, 0x66FF66FF, msg);
+    return 1;
+}
+
 CMD:help(playerid, params[])
 {
     new string[1500];
@@ -2214,9 +3332,12 @@ CMD:help(playerid, params[])
     strcat(string, "{00C0FF}/vehhelp{FFFFFF} - pomoc u vezi komandi za Vas automobil\n");
     strcat(string, "{00C0FF}/renthousehelp{FFFFFF} - pomoc u vezi komandi za rentanje kuce\n");
     strcat(string, "{00C0FF}/rentvehiclehelp{FFFFFF} - pomoc u vezi komandi za rentanje vozila\n");
+    strcat(string, "{00C0FF}/fill{FFFFFF} - natoci gorivo dok vozilo miruje i motor je ugasen\n");
     strcat(string, "{00C0FF}/leaderhelp{FFFFFF} - pomoc u vezi komandi za lidere\n");
     strcat(string, "{00C0FF}/phonehelp{FFFFFF} - pomoc u vezi komandi za mobilni telefon\n");
     strcat(string, "{00C0FF}/bankhelp{FFFFFF} - pomoc u vezi banke i bankomata\n");
+    strcat(string, "{00C0FF}/dosije{FFFFFF} - pregled Wanted Levela i posljednjeg razloga\n");
+    strcat(string, "{00C0FF}/platiputarinu{FFFFFF} - otvori rampu na granici iz vozila\n");
     strcat(string, "{00C0FF}/gpshelp{FFFFFF} - pomoc u vezi lokacija na serveru");
 
     // Prikazivanje dijaloga igracu (ID dijaloga možeš promijeniti u svoj slobodni broj, npr. 999)
@@ -3444,6 +4565,7 @@ CMD:jetpack(playerid, params[])
     if(!SetPlayerSpecialAction(playerid, SPECIAL_ACTION_USEJETPACK))
         return SendClientMessage(playerid, 0xFF0000FF, "[JETPACK]: Nije moguce ukljuciti jetpack.");
     ScriptJetpack[playerid] = true;
+    JetpackDropGuardUntil[playerid] = 0;
     SendClientMessage(playerid, 0x00BFFFFF, "[JETPACK]: Jetpack je ukljucen. Ponovi /jetpack za skidanje.");
     return 1;
 }
@@ -3565,6 +4687,8 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
     if((newkeys & KEY_SECONDARY_ATTACK) && !(oldkeys & KEY_SECONDARY_ATTACK) &&
         (ScriptJetpack[playerid] || GetPlayerSpecialAction(playerid) == SPECIAL_ACTION_USEJETPACK))
     {
+        // SA-MP klijent moze lokalno ostaviti odlozeni jetpack. Ponovno podizanje odmah skidamo.
+        JetpackDropGuardUntil[playerid] = gettime() + 90;
         RemoveJetpackClean(playerid);
         SendClientMessage(playerid, 0x00BFFFFF, "[JETPACK]: Jetpack je uklonjen.");
         return 1;
@@ -3704,7 +4828,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
                 SetPlayerVirtualWorld(playerid, 0);
                 SetPlayerPos(playerid, 1462.90759277, -1022.80725097, 23.83310317);
                 SetCameraBehindPlayer(playerid);
-                SendClientMessage(playerid, 0x33CCFFFF, "[BANKA]: Izisli ste iz banke.");
+                SendClientMessage(playerid, 0x33CCFFFF, "[BANKA]: Izasli ste iz banke.");
                 return 1;
             }
         }
@@ -4873,7 +5997,7 @@ CMD:inventory(playerid, params[])
 {
     #pragma unused params
 
-    new string[300];
+    new string[350];
     format(string, sizeof(string),
         "--- VAS INVENTORY (NAMIRNICE) ---\n\n\
         • Meso: %d kom\n\
@@ -4890,6 +6014,11 @@ CMD:inventory(playerid, params[])
         PlayerInfo[playerid][pSok]
     );
 
+    new account[128], playerName[MAX_PLAYER_NAME], extra[48];
+    GetPlayerName(playerid, playerName, sizeof(playerName));
+    format(account, sizeof(account), "Korisnici/%s.ini", playerName);
+    format(extra, sizeof(extra), "\nDinamit: %d kom", DOF2_FileExists(account) ? DOF2_GetInt(account, "Dinamit") : 0);
+    strcat(string, extra, sizeof(string));
     ShowPlayerDialog(playerid, DIALOG_INVENTORY, DIALOG_STYLE_MSGBOX, "Balkan Revolution RP - Inventory", string, "U redu", "");
     return 1;
 }
@@ -5607,6 +6736,7 @@ CMD:prodajzlato(playerid, params[])
     }
 
     PlayerZlato[playerid] -= kolicina;
+    UpdateZlatoTD(playerid);
     GivePlayerMoney(playerid, ukupna_zarada);
 
     // Oduzimamo novac iz budžeta zlatare jer isplacuje igraca
@@ -5640,221 +6770,1313 @@ CMD:kupisat(playerid, params[])
         "Kupi", "Odustani");
     return 1;
 }
-stock Text:CreateHudLabel(Float:x, Float:y, label[], font, Float:sizeX, Float:sizeY, color, shadow)
-{
-    new Text:td = TextDrawCreate(x, y, label);
-    TextDrawFont(td, font);
-    TextDrawLetterSize(td, sizeX, sizeY);
-    TextDrawColor(td, color);
-    TextDrawBackgroundColor(td, 0x000000FF);
-    TextDrawSetOutline(td, shadow);
-    TextDrawSetShadow(td, 0);
-    TextDrawSetProportional(td, 1);
-    return td;
-}
-
-stock Text:CreateHudPanel(Float:x, Float:y, Float:right, Float:height, color)
-{
-    new Text:td = TextDrawCreate(x, y, "_");
-    TextDrawLetterSize(td, 0.0, height);
-    TextDrawUseBox(td, 1);
-    TextDrawBoxColor(td, color);
-    TextDrawTextSize(td, right, 0.0);
-    return td;
-}
-
-stock Text:CreateHudSprite(Float:x, Float:y, Float:width, Float:height, texture[], color)
-{
-    new Text:td = TextDrawCreate(x, y, texture);
-    TextDrawFont(td, 4);
-    TextDrawTextSize(td, width, height);
-    TextDrawColor(td, color);
-    return td;
-}
 stock InitRevolutionHud()
 {
-    // Odvojena plava pocetna slova i bijela ostatak imena, sa crnom sjenom.
-    // Jedan TextDraw po rijeci cuva prirodan razmak slova i jasna pocetna slova.
-    TD_ServerBalkan = CreateHudLabel(508.0, 5.0, "~b~~h~B~w~ALKAN ~b~~h~R~w~EVOLUTION", 2, 0.26, 1.35, 0xFFFFFFFF, 2);
-
-    // Tamna donja traka i tanke svijetloplave granice.
-    TD_HudParts[0] = CreateHudPanel(0.0, 428.0, 640.0, 1.85, 0x111820F4);
-    TD_HudParts[1] = CreateHudPanel(0.0, 426.5, 640.0, 0.08, 0x2A8BC1FF);
-    TD_HudParts[2] = CreateHudPanel(0.0, 448.0, 640.0, 0.08, 0x2A8BC1FF);
-    TD_HudParts[3] = CreateHudPanel(0.0, 428.0, 59.0, 1.85, 0x172430F4);
-    TD_HudParts[4] = CreateHudPanel(594.0, 428.0, 640.0, 1.85, 0x172430F4);
-
-    TD_HudParts[5] = CreateHudLabel(9.0, 430.0, "BR", 2, 0.26, 1.14, 0xFFFFFFFF, 1);
-    TD_HudParts[6] = CreateHudLabel(24.0, 431.0, "BALKAN~n~REVOLUTION", 1, 0.085, 0.49, 0x70B6E5FF, 0);
-    TD_HudParts[7] = CreateHudPanel(60.0, 430.0, 60.5, 1.3, 0x174D72FF);
-    TD_HudParts[8] = CreateHudSprite(76.0, 429.5, 15.0, 15.0, "LD_BEAT:cring", 0x48CC91FF);
-    TD_HudParts[9] = CreateHudSprite(78.0, 431.5, 11.0, 11.0, "hud:radar_qmark", 0xFFFFFFFF);
-
-    TD_HudPoruka = CreateHudLabel(100.0, 434.0, "~w~OPUSTITE SE U IGRI UZ >> ~b~/MP3", 1, 0.16, 0.72, 0xF0F0F0FF, 1);
-    TD_HudParts[10] = CreateHudLabel(374.0, 434.0, "...", 1, 0.23, 0.75, 0x398FC3FF, 0);
-    TD_HudParts[11] = CreateHudSprite(388.0, 429.5, 15.0, 15.0, "LD_BEAT:cring", 0x4C9CCBFF);
-    TD_HudParts[12] = CreateHudSprite(390.0, 431.5, 11.0, 11.0, "hud:radar_gym", 0xE4C76BFF);
-    TD_HudParts[13] = CreateHudLabel(409.0, 430.0, "HAPPY HOUR:", 1, 0.18, 0.75, 0xF0F0F0FF, 1);
-    TD_HudParts[14] = CreateHudLabel(424.0, 438.5, "USKORO", 1, 0.17, 0.68, 0xF0F0F0FF, 1);
-    TD_HudParts[15] = CreateHudSprite(480.0, 429.5, 15.0, 15.0, "LD_BEAT:cring", 0x4C9CCBFF);
-    TD_HudParts[16] = CreateHudSprite(482.0, 431.5, 11.0, 11.0, "LD_GRAV:timer", 0xE4C76BFF);
-    TD_HudParts[17] = CreateHudPanel(596.0, 430.0, 596.5, 1.3, 0x174D72FF);
-    TD_HudParts[18] = CreateHudLabel(598.0, 430.0, "V", 2, 0.28, 1.16, 0xFFFFFFFF, 1);
-    TD_HudParts[19] = CreateHudLabel(609.0, 434.0, "ERSION", 1, 0.105, 0.64, 0x8BC5E9FF, 0);
-    // Cetiri kose pregrade, sastavljene od sitnih plavih grafickih segmenata.
-    new part = 20;
-    for(new slash = 0; slash < 4; slash++)
-    {
-        new Float:baseX;
-        switch(slash)
-        {
-            case 0: baseX = 45.0;
-            case 1: baseX = 50.0;
-            case 2: baseX = 581.0;
-            case 3: baseX = 586.0;
-        }
-        for(new step = 0; step < 8; step++)
-        {
-            TD_HudParts[part++] = CreateHudSprite(baseX + float(step) * 0.75, 444.0 - float(step) * 1.8,
-                1.8, 2.8, "LD_SPAC:WHITE", 0x2789BDFF);
-        }
-    }
-    TD_HudParts[52] = CreateHudLabel(626.0, 433.0, "V1.1.1", 1, 0.105, 0.64, 0xFFFFFFFF, 0);
+    // Geometrija, fontovi i boje su iz DTD.pwn. Dinamicke vrijednosti su PlayerTextDrawovi.
+    TD_DTD[0] = TextDrawCreate(444.000000, 3.000000, "B");
+    TextDrawFont(TD_DTD[0], 2);
+    TextDrawLetterSize(TD_DTD[0], 0.662499, 2.499999);
+    TextDrawTextSize(TD_DTD[0], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[0], 1);
+    TextDrawSetShadow(TD_DTD[0], 3);
+    TextDrawAlignment(TD_DTD[0], 1);
+    TextDrawColor(TD_DTD[0], 1097458175);
+    TextDrawBackgroundColor(TD_DTD[0], 255);
+    TextDrawBoxColor(TD_DTD[0], 50);
+    TextDrawUseBox(TD_DTD[0], 0);
+    TextDrawSetProportional(TD_DTD[0], 1);
+    TextDrawSetSelectable(TD_DTD[0], 0);
+    TD_DTD[1] = TextDrawCreate(460.000000, 9.000000, "alkan");
+    TextDrawFont(TD_DTD[1], 2);
+    TextDrawLetterSize(TD_DTD[1], 0.412499, 1.600000);
+    TextDrawTextSize(TD_DTD[1], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[1], 1);
+    TextDrawSetShadow(TD_DTD[1], 3);
+    TextDrawAlignment(TD_DTD[1], 1);
+    TextDrawColor(TD_DTD[1], -1);
+    TextDrawBackgroundColor(TD_DTD[1], 255);
+    TextDrawBoxColor(TD_DTD[1], 50);
+    TextDrawUseBox(TD_DTD[1], 0);
+    TextDrawSetProportional(TD_DTD[1], 1);
+    TextDrawSetSelectable(TD_DTD[1], 0);
+    TD_DTD[2] = TextDrawCreate(519.000000, 3.000000, "R");
+    TextDrawFont(TD_DTD[2], 2);
+    TextDrawLetterSize(TD_DTD[2], 0.662499, 2.499999);
+    TextDrawTextSize(TD_DTD[2], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[2], 1);
+    TextDrawSetShadow(TD_DTD[2], 3);
+    TextDrawAlignment(TD_DTD[2], 1);
+    TextDrawColor(TD_DTD[2], 1097458175);
+    TextDrawBackgroundColor(TD_DTD[2], 255);
+    TextDrawBoxColor(TD_DTD[2], 50);
+    TextDrawUseBox(TD_DTD[2], 0);
+    TextDrawSetProportional(TD_DTD[2], 1);
+    TextDrawSetSelectable(TD_DTD[2], 0);
+    TD_DTD[3] = TextDrawCreate(536.000000, 9.000000, "evolution");
+    TextDrawFont(TD_DTD[3], 2);
+    TextDrawLetterSize(TD_DTD[3], 0.412000, 1.600000);
+    TextDrawTextSize(TD_DTD[3], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[3], 1);
+    TextDrawSetShadow(TD_DTD[3], 3);
+    TextDrawAlignment(TD_DTD[3], 1);
+    TextDrawColor(TD_DTD[3], -1);
+    TextDrawBackgroundColor(TD_DTD[3], 255);
+    TextDrawBoxColor(TD_DTD[3], 50);
+    TextDrawUseBox(TD_DTD[3], 0);
+    TextDrawSetProportional(TD_DTD[3], 1);
+    TextDrawSetSelectable(TD_DTD[3], 0);
+    TD_DTD[4] = TextDrawCreate(317.000000, 431.000000, "_");
+    TextDrawFont(TD_DTD[4], 1);
+    TextDrawLetterSize(TD_DTD[4], 0.649999, 1.749994);
+    TextDrawTextSize(TD_DTD[4], 357.500000, 647.500000);
+    TextDrawSetOutline(TD_DTD[4], 1);
+    TextDrawSetShadow(TD_DTD[4], 0);
+    TextDrawAlignment(TD_DTD[4], 2);
+    TextDrawColor(TD_DTD[4], -1);
+    TextDrawBackgroundColor(TD_DTD[4], 255);
+    TextDrawBoxColor(TD_DTD[4], 421339391);
+    TextDrawUseBox(TD_DTD[4], 1);
+    TextDrawSetProportional(TD_DTD[4], 1);
+    TextDrawSetSelectable(TD_DTD[4], 0);
+    TD_DTD[5] = TextDrawCreate(317.000000, 430.000000, "_");
+    TextDrawFont(TD_DTD[5], 1);
+    TextDrawLetterSize(TD_DTD[5], 0.649999, -0.150003);
+    TextDrawTextSize(TD_DTD[5], 357.500000, 647.500000);
+    TextDrawSetOutline(TD_DTD[5], 1);
+    TextDrawSetShadow(TD_DTD[5], 0);
+    TextDrawAlignment(TD_DTD[5], 2);
+    TextDrawColor(TD_DTD[5], 1097458175);
+    TextDrawBackgroundColor(TD_DTD[5], 255);
+    TextDrawBoxColor(TD_DTD[5], 1097458175);
+    TextDrawUseBox(TD_DTD[5], 1);
+    TextDrawSetProportional(TD_DTD[5], 1);
+    TextDrawSetSelectable(TD_DTD[5], 0);
+    TD_DTD[6] = TextDrawCreate(317.000000, 448.000000, "_");
+    TextDrawFont(TD_DTD[6], 1);
+    TextDrawLetterSize(TD_DTD[6], 0.649999, -0.100004);
+    TextDrawTextSize(TD_DTD[6], 357.500000, 647.500000);
+    TextDrawSetOutline(TD_DTD[6], 1);
+    TextDrawSetShadow(TD_DTD[6], 0);
+    TextDrawAlignment(TD_DTD[6], 2);
+    TextDrawColor(TD_DTD[6], 1097458175);
+    TextDrawBackgroundColor(TD_DTD[6], 255);
+    TextDrawBoxColor(TD_DTD[6], 1097458175);
+    TextDrawUseBox(TD_DTD[6], 1);
+    TextDrawSetProportional(TD_DTD[6], 1);
+    TextDrawSetSelectable(TD_DTD[6], 0);
+    TD_DTD[7] = TextDrawCreate(17.000000, 426.000000, "BR");
+    TextDrawFont(TD_DTD[7], 2);
+    TextDrawLetterSize(TD_DTD[7], 0.600000, 2.349997);
+    TextDrawTextSize(TD_DTD[7], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[7], 0);
+    TextDrawSetShadow(TD_DTD[7], 0);
+    TextDrawAlignment(TD_DTD[7], 1);
+    TextDrawColor(TD_DTD[7], -1);
+    TextDrawBackgroundColor(TD_DTD[7], 255);
+    TextDrawBoxColor(TD_DTD[7], 50);
+    TextDrawUseBox(TD_DTD[7], 0);
+    TextDrawSetProportional(TD_DTD[7], 1);
+    TextDrawSetSelectable(TD_DTD[7], 0);
+    TD_DTD[8] = TextDrawCreate(48.000000, 430.000000, "BALKAN");
+    TextDrawFont(TD_DTD[8], 2);
+    TextDrawLetterSize(TD_DTD[8], 0.162496, 1.000000);
+    TextDrawTextSize(TD_DTD[8], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[8], 0);
+    TextDrawSetShadow(TD_DTD[8], 0);
+    TextDrawAlignment(TD_DTD[8], 1);
+    TextDrawColor(TD_DTD[8], 1097458175);
+    TextDrawBackgroundColor(TD_DTD[8], 255);
+    TextDrawBoxColor(TD_DTD[8], 50);
+    TextDrawUseBox(TD_DTD[8], 0);
+    TextDrawSetProportional(TD_DTD[8], 1);
+    TextDrawSetSelectable(TD_DTD[8], 0);
+    TD_DTD[9] = TextDrawCreate(48.000000, 436.000000, "REVOLUTION");
+    TextDrawFont(TD_DTD[9], 2);
+    TextDrawLetterSize(TD_DTD[9], 0.162496, 1.000000);
+    TextDrawTextSize(TD_DTD[9], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[9], 0);
+    TextDrawSetShadow(TD_DTD[9], 0);
+    TextDrawAlignment(TD_DTD[9], 1);
+    TextDrawColor(TD_DTD[9], 1097458175);
+    TextDrawBackgroundColor(TD_DTD[9], 255);
+    TextDrawBoxColor(TD_DTD[9], 50);
+    TextDrawUseBox(TD_DTD[9], 0);
+    TextDrawSetProportional(TD_DTD[9], 1);
+    TextDrawSetSelectable(TD_DTD[9], 0);
+    TD_DTD[10] = TextDrawCreate(112.000000, 433.000000, "ld_chat:badchat");
+    TextDrawFont(TD_DTD[10], 4);
+    TextDrawLetterSize(TD_DTD[10], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[10], 12.500000, 10.500000);
+    TextDrawSetOutline(TD_DTD[10], 1);
+    TextDrawSetShadow(TD_DTD[10], 2);
+    TextDrawAlignment(TD_DTD[10], 1);
+    TextDrawColor(TD_DTD[10], -1);
+    TextDrawBackgroundColor(TD_DTD[10], 255);
+    TextDrawBoxColor(TD_DTD[10], 50);
+    TextDrawUseBox(TD_DTD[10], 1);
+    TextDrawSetProportional(TD_DTD[10], 1);
+    TextDrawSetSelectable(TD_DTD[10], 0);
+    TD_DTD[11] = TextDrawCreate(0.000000, 429.000000, "LogoDiagonal:dia1");
+    TextDrawFont(TD_DTD[11], 4);
+    TextDrawLetterSize(TD_DTD[11], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[11], 17.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[11], 1);
+    TextDrawSetShadow(TD_DTD[11], 0);
+    TextDrawAlignment(TD_DTD[11], 1);
+    TextDrawColor(TD_DTD[11], -1);
+    TextDrawBackgroundColor(TD_DTD[11], 255);
+    TextDrawBoxColor(TD_DTD[11], 50);
+    TextDrawUseBox(TD_DTD[11], 1);
+    TextDrawSetProportional(TD_DTD[11], 1);
+    TextDrawSetSelectable(TD_DTD[11], 0);
+    TD_DTD[12] = TextDrawCreate(90.000000, 430.000000, "LogoDiagonal:dia2");
+    TextDrawFont(TD_DTD[12], 4);
+    TextDrawLetterSize(TD_DTD[12], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[12], 17.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[12], 1);
+    TextDrawSetShadow(TD_DTD[12], 0);
+    TextDrawAlignment(TD_DTD[12], 1);
+    TextDrawColor(TD_DTD[12], -1);
+    TextDrawBackgroundColor(TD_DTD[12], 255);
+    TextDrawBoxColor(TD_DTD[12], 50);
+    TextDrawUseBox(TD_DTD[12], 1);
+    TextDrawSetProportional(TD_DTD[12], 1);
+    TextDrawSetSelectable(TD_DTD[12], 0);
+    TD_DTD[13] = TextDrawCreate(127.000000, 434.500000, "PORUKE");
+    TextDrawFont(TD_DTD[13], 2);
+    TextDrawLetterSize(TD_DTD[13], 0.237498, 0.849999);
+    TextDrawTextSize(TD_DTD[13], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[13], 0);
+    TextDrawSetShadow(TD_DTD[13], 0);
+    TextDrawAlignment(TD_DTD[13], 1);
+    TextDrawColor(TD_DTD[13], -1);
+    TextDrawBackgroundColor(TD_DTD[13], 255);
+    TextDrawBoxColor(TD_DTD[13], 50);
+    TextDrawUseBox(TD_DTD[13], 0);
+    TextDrawSetProportional(TD_DTD[13], 1);
+    TextDrawSetSelectable(TD_DTD[13], 0);
+    TD_DTD[14] = TextDrawCreate(93.000000, 430.000000, "LogoDiagonal:dia2");
+    TextDrawFont(TD_DTD[14], 4);
+    TextDrawLetterSize(TD_DTD[14], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[14], 17.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[14], 1);
+    TextDrawSetShadow(TD_DTD[14], 0);
+    TextDrawAlignment(TD_DTD[14], 1);
+    TextDrawColor(TD_DTD[14], -1);
+    TextDrawBackgroundColor(TD_DTD[14], 255);
+    TextDrawBoxColor(TD_DTD[14], 50);
+    TextDrawUseBox(TD_DTD[14], 1);
+    TextDrawSetProportional(TD_DTD[14], 1);
+    TextDrawSetSelectable(TD_DTD[14], 0);
+    TD_DTD[15] = TextDrawCreate(353.000000, 437.000000, "LogoDiagonal:dia3");
+    TextDrawFont(TD_DTD[15], 4);
+    TextDrawLetterSize(TD_DTD[15], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[15], 3.000000, 3.000000);
+    TextDrawSetOutline(TD_DTD[15], 1);
+    TextDrawSetShadow(TD_DTD[15], 0);
+    TextDrawAlignment(TD_DTD[15], 1);
+    TextDrawColor(TD_DTD[15], -1);
+    TextDrawBackgroundColor(TD_DTD[15], 255);
+    TextDrawBoxColor(TD_DTD[15], 50);
+    TextDrawUseBox(TD_DTD[15], 1);
+    TextDrawSetProportional(TD_DTD[15], 1);
+    TextDrawSetSelectable(TD_DTD[15], 0);
+    TD_DTD[16] = TextDrawCreate(358.000000, 437.000000, "LogoDiagonal:dia3");
+    TextDrawFont(TD_DTD[16], 4);
+    TextDrawLetterSize(TD_DTD[16], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[16], 3.000000, 3.000000);
+    TextDrawSetOutline(TD_DTD[16], 1);
+    TextDrawSetShadow(TD_DTD[16], 0);
+    TextDrawAlignment(TD_DTD[16], 1);
+    TextDrawColor(TD_DTD[16], -1);
+    TextDrawBackgroundColor(TD_DTD[16], 255);
+    TextDrawBoxColor(TD_DTD[16], 50);
+    TextDrawUseBox(TD_DTD[16], 1);
+    TextDrawSetProportional(TD_DTD[16], 1);
+    TextDrawSetSelectable(TD_DTD[16], 0);
+    TD_DTD[17] = TextDrawCreate(363.000000, 437.000000, "LogoDiagonal:dia3");
+    TextDrawFont(TD_DTD[17], 4);
+    TextDrawLetterSize(TD_DTD[17], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[17], 3.000000, 3.000000);
+    TextDrawSetOutline(TD_DTD[17], 1);
+    TextDrawSetShadow(TD_DTD[17], 0);
+    TextDrawAlignment(TD_DTD[17], 1);
+    TextDrawColor(TD_DTD[17], -1);
+    TextDrawBackgroundColor(TD_DTD[17], 255);
+    TextDrawBoxColor(TD_DTD[17], 50);
+    TextDrawUseBox(TD_DTD[17], 1);
+    TextDrawSetProportional(TD_DTD[17], 1);
+    TextDrawSetSelectable(TD_DTD[17], 0);
+    TD_DTD[18] = TextDrawCreate(301.000000, 211.000000, "Turbo:tur1");
+    TextDrawFont(TD_DTD[18], 4);
+    TextDrawLetterSize(TD_DTD[18], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[18], 17.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[18], 1);
+    TextDrawSetShadow(TD_DTD[18], 0);
+    TextDrawAlignment(TD_DTD[18], 1);
+    TextDrawColor(TD_DTD[18], -1);
+    TextDrawBackgroundColor(TD_DTD[18], 255);
+    TextDrawBoxColor(TD_DTD[18], 50);
+    TextDrawUseBox(TD_DTD[18], 1);
+    TextDrawSetProportional(TD_DTD[18], 1);
+    TextDrawSetSelectable(TD_DTD[18], 0);
+    TD_DTD[19] = TextDrawCreate(369.000000, 431.500000, "Krug:krug1");
+    TextDrawFont(TD_DTD[19], 4);
+    TextDrawLetterSize(TD_DTD[19], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[19], 13.500000, 13.500000);
+    TextDrawSetOutline(TD_DTD[19], 1);
+    TextDrawSetShadow(TD_DTD[19], 0);
+    TextDrawAlignment(TD_DTD[19], 1);
+    TextDrawColor(TD_DTD[19], -1);
+    TextDrawBackgroundColor(TD_DTD[19], 255);
+    TextDrawBoxColor(TD_DTD[19], 50);
+    TextDrawUseBox(TD_DTD[19], 1);
+    TextDrawSetProportional(TD_DTD[19], 1);
+    TextDrawSetSelectable(TD_DTD[19], 0);
+    TD_DTD[20] = TextDrawCreate(366.000000, 431.500000, "Preview_Model");
+    TextDrawFont(TD_DTD[20], 5);
+    TextDrawLetterSize(TD_DTD[20], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[20], 19.000000, 13.500000);
+    TextDrawSetOutline(TD_DTD[20], 0);
+    TextDrawSetShadow(TD_DTD[20], 0);
+    TextDrawAlignment(TD_DTD[20], 1);
+    TextDrawColor(TD_DTD[20], -1);
+    TextDrawBackgroundColor(TD_DTD[20], -256);
+    TextDrawBoxColor(TD_DTD[20], 0);
+    TextDrawUseBox(TD_DTD[20], 0);
+    TextDrawSetProportional(TD_DTD[20], 1);
+    TextDrawSetSelectable(TD_DTD[20], 0);
+    TextDrawSetPreviewModel(TD_DTD[20], 1239);
+    TextDrawSetPreviewRot(TD_DTD[20], -10.000000, 0.000000, 0.000000, 1.000000);
+    TextDrawSetPreviewVehCol(TD_DTD[20], 1, 1);
+    TD_DTD[21] = TextDrawCreate(418.000000, 432.000000, "HAPPY JOB:");
+    TextDrawFont(TD_DTD[21], 2);
+    TextDrawLetterSize(TD_DTD[21], 0.133331, 0.699998);
+    TextDrawTextSize(TD_DTD[21], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[21], 0);
+    TextDrawSetShadow(TD_DTD[21], 0);
+    TextDrawAlignment(TD_DTD[21], 3);
+    TextDrawColor(TD_DTD[21], -1);
+    TextDrawBackgroundColor(TD_DTD[21], 255);
+    TextDrawBoxColor(TD_DTD[21], 50);
+    TextDrawUseBox(TD_DTD[21], 0);
+    TextDrawSetProportional(TD_DTD[21], 1);
+    TextDrawSetSelectable(TD_DTD[21], 0);
+    TD_DTD[22] = TextDrawCreate(472.000000, 438.000000, "USKORO");
+    TextDrawFont(TD_DTD[22], 2);
+    TextDrawLetterSize(TD_DTD[22], 0.158333, 0.600000);
+    TextDrawTextSize(TD_DTD[22], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[22], 0);
+    TextDrawSetShadow(TD_DTD[22], 0);
+    TextDrawAlignment(TD_DTD[22], 3);
+    TextDrawColor(TD_DTD[22], -1);
+    TextDrawBackgroundColor(TD_DTD[22], 255);
+    TextDrawBoxColor(TD_DTD[22], 50);
+    TextDrawUseBox(TD_DTD[22], 0);
+    TextDrawSetProportional(TD_DTD[22], 1);
+    TextDrawSetSelectable(TD_DTD[22], 0);
+    TD_DTD[23] = TextDrawCreate(475.000000, 431.500000, "Krug:krug1");
+    TextDrawFont(TD_DTD[23], 4);
+    TextDrawLetterSize(TD_DTD[23], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[23], 13.500000, 13.500000);
+    TextDrawSetOutline(TD_DTD[23], 1);
+    TextDrawSetShadow(TD_DTD[23], 0);
+    TextDrawAlignment(TD_DTD[23], 1);
+    TextDrawColor(TD_DTD[23], -1);
+    TextDrawBackgroundColor(TD_DTD[23], 255);
+    TextDrawBoxColor(TD_DTD[23], 50);
+    TextDrawUseBox(TD_DTD[23], 1);
+    TextDrawSetProportional(TD_DTD[23], 1);
+    TextDrawSetSelectable(TD_DTD[23], 0);
+    TD_DTD[24] = TextDrawCreate(476.000000, 433.000000, "ld_grav:timer");
+    TextDrawFont(TD_DTD[24], 4);
+    TextDrawLetterSize(TD_DTD[24], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[24], 11.500000, 10.500000);
+    TextDrawSetOutline(TD_DTD[24], 1);
+    TextDrawSetShadow(TD_DTD[24], 0);
+    TextDrawAlignment(TD_DTD[24], 1);
+    TextDrawColor(TD_DTD[24], -1);
+    TextDrawBackgroundColor(TD_DTD[24], 255);
+    TextDrawBoxColor(TD_DTD[24], 50);
+    TextDrawUseBox(TD_DTD[24], 1);
+    TextDrawSetProportional(TD_DTD[24], 1);
+    TextDrawSetSelectable(TD_DTD[24], 0);
+    TD_DTD[27] = TextDrawCreate(560.000000, 430.000000, "LogoDiagonal:dia2");
+    TextDrawFont(TD_DTD[27], 4);
+    TextDrawLetterSize(TD_DTD[27], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[27], 17.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[27], 1);
+    TextDrawSetShadow(TD_DTD[27], 0);
+    TextDrawAlignment(TD_DTD[27], 1);
+    TextDrawColor(TD_DTD[27], -1);
+    TextDrawBackgroundColor(TD_DTD[27], 255);
+    TextDrawBoxColor(TD_DTD[27], 50);
+    TextDrawUseBox(TD_DTD[27], 1);
+    TextDrawSetProportional(TD_DTD[27], 1);
+    TextDrawSetSelectable(TD_DTD[27], 0);
+    TD_DTD[28] = TextDrawCreate(563.000000, 430.000000, "LogoDiagonal:dia2");
+    TextDrawFont(TD_DTD[28], 4);
+    TextDrawLetterSize(TD_DTD[28], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[28], 17.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[28], 1);
+    TextDrawSetShadow(TD_DTD[28], 0);
+    TextDrawAlignment(TD_DTD[28], 1);
+    TextDrawColor(TD_DTD[28], -1);
+    TextDrawBackgroundColor(TD_DTD[28], 255);
+    TextDrawBoxColor(TD_DTD[28], 50);
+    TextDrawUseBox(TD_DTD[28], 1);
+    TextDrawSetProportional(TD_DTD[28], 1);
+    TextDrawSetSelectable(TD_DTD[28], 0);
+    TD_DTD[29] = TextDrawCreate(575.000000, 428.000000, "V");
+    TextDrawFont(TD_DTD[29], 2);
+    TextDrawLetterSize(TD_DTD[29], 0.412499, 2.000000);
+    TextDrawTextSize(TD_DTD[29], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[29], 0);
+    TextDrawSetShadow(TD_DTD[29], 0);
+    TextDrawAlignment(TD_DTD[29], 1);
+    TextDrawColor(TD_DTD[29], -1);
+    TextDrawBackgroundColor(TD_DTD[29], 255);
+    TextDrawBoxColor(TD_DTD[29], 50);
+    TextDrawUseBox(TD_DTD[29], 0);
+    TextDrawSetProportional(TD_DTD[29], 1);
+    TextDrawSetSelectable(TD_DTD[29], 0);
+    TD_DTD[30] = TextDrawCreate(584.000000, 436.000000, "ERSION:");
+    TextDrawFont(TD_DTD[30], 2);
+    TextDrawLetterSize(TD_DTD[30], 0.187500, 0.949998);
+    TextDrawTextSize(TD_DTD[30], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[30], 0);
+    TextDrawSetShadow(TD_DTD[30], 0);
+    TextDrawAlignment(TD_DTD[30], 1);
+    TextDrawColor(TD_DTD[30], 1097458175);
+    TextDrawBackgroundColor(TD_DTD[30], 255);
+    TextDrawBoxColor(TD_DTD[30], 50);
+    TextDrawUseBox(TD_DTD[30], 0);
+    TextDrawSetProportional(TD_DTD[30], 1);
+    TextDrawSetSelectable(TD_DTD[30], 0);
+    TD_DTD[31] = TextDrawCreate(611.000000, 432.000000, "V1.0");
+    TextDrawFont(TD_DTD[31], 2);
+    TextDrawLetterSize(TD_DTD[31], 0.125000, 0.800000);
+    TextDrawTextSize(TD_DTD[31], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[31], 0);
+    TextDrawSetShadow(TD_DTD[31], 0);
+    TextDrawAlignment(TD_DTD[31], 1);
+    TextDrawColor(TD_DTD[31], -1);
+    TextDrawBackgroundColor(TD_DTD[31], 255);
+    TextDrawBoxColor(TD_DTD[31], 50);
+    TextDrawUseBox(TD_DTD[31], 0);
+    TextDrawSetProportional(TD_DTD[31], 1);
+    TextDrawSetSelectable(TD_DTD[31], 0);
+    TD_DTD[32] = TextDrawCreate(640.000000, 429.000000, "LogoDiagonal:dia1");
+    TextDrawFont(TD_DTD[32], 4);
+    TextDrawLetterSize(TD_DTD[32], 0.600000, 2.000000);
+    TextDrawTextSize(TD_DTD[32], -17.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[32], 1);
+    TextDrawSetShadow(TD_DTD[32], 0);
+    TextDrawAlignment(TD_DTD[32], 1);
+    TextDrawColor(TD_DTD[32], -1);
+    TextDrawBackgroundColor(TD_DTD[32], 255);
+    TextDrawBoxColor(TD_DTD[32], 50);
+    TextDrawUseBox(TD_DTD[32], 1);
+    TextDrawSetProportional(TD_DTD[32], 1);
+    TextDrawSetSelectable(TD_DTD[32], 0);
+    TD_DTD[33] = TextDrawCreate(497.000000, 105.000000, "BANK:");
+    TextDrawFont(TD_DTD[33], 2);
+    TextDrawLetterSize(TD_DTD[33], 0.237499, 1.000000);
+    TextDrawTextSize(TD_DTD[33], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[33], 1);
+    TextDrawSetShadow(TD_DTD[33], 0);
+    TextDrawAlignment(TD_DTD[33], 1);
+    TextDrawColor(TD_DTD[33], 1097458175);
+    TextDrawBackgroundColor(TD_DTD[33], 255);
+    TextDrawBoxColor(TD_DTD[33], 50);
+    TextDrawUseBox(TD_DTD[33], 0);
+    TextDrawSetProportional(TD_DTD[33], 1);
+    TextDrawSetSelectable(TD_DTD[33], 0);
+    TD_DTD[35] = TextDrawCreate(497.000000, 117.000000, "EURO:");
+    TextDrawFont(TD_DTD[35], 2);
+    TextDrawLetterSize(TD_DTD[35], 0.237499, 1.000000);
+    TextDrawTextSize(TD_DTD[35], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[35], 1);
+    TextDrawSetShadow(TD_DTD[35], 0);
+    TextDrawAlignment(TD_DTD[35], 1);
+    TextDrawColor(TD_DTD[35], -905198081);
+    TextDrawBackgroundColor(TD_DTD[35], 255);
+    TextDrawBoxColor(TD_DTD[35], 50);
+    TextDrawUseBox(TD_DTD[35], 0);
+    TextDrawSetProportional(TD_DTD[35], 1);
+    TextDrawSetSelectable(TD_DTD[35], 0);
+    TD_DTD[37] = TextDrawCreate(497.000000, 129.000000, "ZLATO:");
+    TextDrawFont(TD_DTD[37], 2);
+    TextDrawLetterSize(TD_DTD[37], 0.237499, 1.000000);
+    TextDrawTextSize(TD_DTD[37], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[37], 1);
+    TextDrawSetShadow(TD_DTD[37], 0);
+    TextDrawAlignment(TD_DTD[37], 1);
+    TextDrawColor(TD_DTD[37], -65281);
+    TextDrawBackgroundColor(TD_DTD[37], 255);
+    TextDrawBoxColor(TD_DTD[37], 50);
+    TextDrawUseBox(TD_DTD[37], 0);
+    TextDrawSetProportional(TD_DTD[37], 1);
+    TextDrawSetSelectable(TD_DTD[37], 0);
+    TD_DTD[41] = TextDrawCreate(574.000000, 351.899993, "_");
+    TextDrawFont(TD_DTD[41], 1);
+    TextDrawLetterSize(TD_DTD[41], 0.600000, 8.399994);
+    TextDrawTextSize(TD_DTD[41], 317.500000, 130.000000);
+    TextDrawSetOutline(TD_DTD[41], 1);
+    TextDrawSetShadow(TD_DTD[41], 0);
+    TextDrawAlignment(TD_DTD[41], 2);
+    TextDrawColor(TD_DTD[41], -1);
+    TextDrawBackgroundColor(TD_DTD[41], 255);
+    TextDrawBoxColor(TD_DTD[41], 421339391);
+    TextDrawUseBox(TD_DTD[41], 1);
+    TextDrawSetProportional(TD_DTD[41], 1);
+    TextDrawSetSelectable(TD_DTD[41], 0);
+    TD_DTD[42] = TextDrawCreate(508.000000, 353.000000, "_");
+    TextDrawFont(TD_DTD[42], 1);
+    TextDrawLetterSize(TD_DTD[42], 0.600000, 8.399994);
+    TextDrawTextSize(TD_DTD[42], 306.500000, -4.000000);
+    TextDrawSetOutline(TD_DTD[42], 1);
+    TextDrawSetShadow(TD_DTD[42], 0);
+    TextDrawAlignment(TD_DTD[42], 2);
+    TextDrawColor(TD_DTD[42], -1);
+    TextDrawBackgroundColor(TD_DTD[42], 255);
+    TextDrawBoxColor(TD_DTD[42], 1097458175);
+    TextDrawUseBox(TD_DTD[42], 1);
+    TextDrawSetProportional(TD_DTD[42], 1);
+    TextDrawSetSelectable(TD_DTD[42], 0);
+    TD_DTD[43] = TextDrawCreate(546.000000, 372.000000, "_");
+    TextDrawFont(TD_DTD[43], 1);
+    TextDrawLetterSize(TD_DTD[43], 0.600000, 6.199986);
+    TextDrawTextSize(TD_DTD[43], 306.500000, -4.000000);
+    TextDrawSetOutline(TD_DTD[43], 1);
+    TextDrawSetShadow(TD_DTD[43], 0);
+    TextDrawAlignment(TD_DTD[43], 2);
+    TextDrawColor(TD_DTD[43], -1);
+    TextDrawBackgroundColor(TD_DTD[43], 255);
+    TextDrawBoxColor(TD_DTD[43], 1097458175);
+    TextDrawUseBox(TD_DTD[43], 1);
+    TextDrawSetProportional(TD_DTD[43], 1);
+    TextDrawSetSelectable(TD_DTD[43], 0);
+    TD_DTD[44] = TextDrawCreate(574.000000, 371.000000, "_");
+    TextDrawFont(TD_DTD[44], 1);
+    TextDrawLetterSize(TD_DTD[44], 0.600000, -0.150000);
+    TextDrawTextSize(TD_DTD[44], 479.000000, 130.500000);
+    TextDrawSetOutline(TD_DTD[44], 1);
+    TextDrawSetShadow(TD_DTD[44], 0);
+    TextDrawAlignment(TD_DTD[44], 2);
+    TextDrawColor(TD_DTD[44], -1);
+    TextDrawBackgroundColor(TD_DTD[44], 255);
+    TextDrawBoxColor(TD_DTD[44], 1097458175);
+    TextDrawUseBox(TD_DTD[44], 1);
+    TextDrawSetProportional(TD_DTD[44], 1);
+    TextDrawSetSelectable(TD_DTD[44], 0);
+    TD_DTD[45] = TextDrawCreate(573.900024, 352.000000, "_");
+    TextDrawFont(TD_DTD[45], 1);
+    TextDrawLetterSize(TD_DTD[45], 0.600000, -0.150000);
+    TextDrawTextSize(TD_DTD[45], 479.000000, 130.500000);
+    TextDrawSetOutline(TD_DTD[45], 1);
+    TextDrawSetShadow(TD_DTD[45], 0);
+    TextDrawAlignment(TD_DTD[45], 2);
+    TextDrawColor(TD_DTD[45], -1);
+    TextDrawBackgroundColor(TD_DTD[45], 255);
+    TextDrawBoxColor(TD_DTD[45], 1097458175);
+    TextDrawUseBox(TD_DTD[45], 1);
+    TextDrawSetProportional(TD_DTD[45], 1);
+    TextDrawSetSelectable(TD_DTD[45], 0);
+    TD_DTD[48] = TextDrawCreate(514.000000, 402.000000, "km/h");
+    TextDrawFont(TD_DTD[48], 2);
+    TextDrawLetterSize(TD_DTD[48], 0.237499, 1.100000);
+    TextDrawTextSize(TD_DTD[48], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[48], 1);
+    TextDrawSetShadow(TD_DTD[48], 0);
+    TextDrawAlignment(TD_DTD[48], 1);
+    TextDrawColor(TD_DTD[48], -1);
+    TextDrawBackgroundColor(TD_DTD[48], 255);
+    TextDrawBoxColor(TD_DTD[48], 50);
+    TextDrawUseBox(TD_DTD[48], 0);
+    TextDrawSetProportional(TD_DTD[48], 1);
+    TextDrawSetSelectable(TD_DTD[48], 0);
+    TD_DTD[49] = TextDrawCreate(586.000000, 375.000000, "Gorivo:");
+    TextDrawFont(TD_DTD[49], 2);
+    TextDrawLetterSize(TD_DTD[49], 0.212500, 0.899999);
+    TextDrawTextSize(TD_DTD[49], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[49], 1);
+    TextDrawSetShadow(TD_DTD[49], 0);
+    TextDrawAlignment(TD_DTD[49], 3);
+    TextDrawColor(TD_DTD[49], -1);
+    TextDrawBackgroundColor(TD_DTD[49], 255);
+    TextDrawBoxColor(TD_DTD[49], 50);
+    TextDrawUseBox(TD_DTD[49], 0);
+    TextDrawSetProportional(TD_DTD[49], 1);
+    TextDrawSetSelectable(TD_DTD[49], 0);
+    TD_DTD[50] = TextDrawCreate(582.000000, 387.000000, "VRSTA:");
+    TextDrawFont(TD_DTD[50], 2);
+    TextDrawLetterSize(TD_DTD[50], 0.212500, 0.899999);
+    TextDrawTextSize(TD_DTD[50], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[50], 1);
+    TextDrawSetShadow(TD_DTD[50], 0);
+    TextDrawAlignment(TD_DTD[50], 3);
+    TextDrawColor(TD_DTD[50], -1);
+    TextDrawBackgroundColor(TD_DTD[50], 255);
+    TextDrawBoxColor(TD_DTD[50], 50);
+    TextDrawUseBox(TD_DTD[50], 0);
+    TextDrawSetProportional(TD_DTD[50], 1);
+    TextDrawSetSelectable(TD_DTD[50], 0);
+    TD_DTD[51] = TextDrawCreate(599.000000, 398.000000, "KILOMETRI:");
+    TextDrawFont(TD_DTD[51], 2);
+    TextDrawLetterSize(TD_DTD[51], 0.212500, 0.899999);
+    TextDrawTextSize(TD_DTD[51], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[51], 1);
+    TextDrawSetShadow(TD_DTD[51], 0);
+    TextDrawAlignment(TD_DTD[51], 3);
+    TextDrawColor(TD_DTD[51], -1);
+    TextDrawBackgroundColor(TD_DTD[51], 255);
+    TextDrawBoxColor(TD_DTD[51], 50);
+    TextDrawUseBox(TD_DTD[51], 0);
+    TextDrawSetProportional(TD_DTD[51], 1);
+    TextDrawSetSelectable(TD_DTD[51], 0);
+    TD_DTD[52] = TextDrawCreate(592.000000, 410.000000, "KVAROVI:");
+    TextDrawFont(TD_DTD[52], 2);
+    TextDrawLetterSize(TD_DTD[52], 0.212500, 0.899999);
+    TextDrawTextSize(TD_DTD[52], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[52], 1);
+    TextDrawSetShadow(TD_DTD[52], 0);
+    TextDrawAlignment(TD_DTD[52], 3);
+    TextDrawColor(TD_DTD[52], -1);
+    TextDrawBackgroundColor(TD_DTD[52], 255);
+    TextDrawBoxColor(TD_DTD[52], 50);
+    TextDrawUseBox(TD_DTD[52], 0);
+    TextDrawSetProportional(TD_DTD[52], 1);
+    TextDrawSetSelectable(TD_DTD[52], 0);
+    TD_DTD[57] = TextDrawCreate(610.000000, 376.000000, "/");
+    TextDrawFont(TD_DTD[57], 2);
+    TextDrawLetterSize(TD_DTD[57], 0.150000, 0.899999);
+    TextDrawTextSize(TD_DTD[57], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[57], 1);
+    TextDrawSetShadow(TD_DTD[57], 0);
+    TextDrawAlignment(TD_DTD[57], 1);
+    TextDrawColor(TD_DTD[57], -1);
+    TextDrawBackgroundColor(TD_DTD[57], 255);
+    TextDrawBoxColor(TD_DTD[57], 50);
+    TextDrawUseBox(TD_DTD[57], 0);
+    TextDrawSetProportional(TD_DTD[57], 1);
+    TextDrawSetSelectable(TD_DTD[57], 0);
+    TD_DTD[59] = TextDrawCreate(600.000000, 410.500000, "/");
+    TextDrawFont(TD_DTD[59], 2);
+    TextDrawLetterSize(TD_DTD[59], 0.150000, 0.899999);
+    TextDrawTextSize(TD_DTD[59], 400.000000, 17.000000);
+    TextDrawSetOutline(TD_DTD[59], 1);
+    TextDrawSetShadow(TD_DTD[59], 0);
+    TextDrawAlignment(TD_DTD[59], 1);
+    TextDrawColor(TD_DTD[59], -1);
+    TextDrawBackgroundColor(TD_DTD[59], 255);
+    TextDrawBoxColor(TD_DTD[59], 50);
+    TextDrawUseBox(TD_DTD[59], 0);
+    TextDrawSetProportional(TD_DTD[59], 1);
+    TextDrawSetSelectable(TD_DTD[59], 0);
+    TD_HudPoruka = TD_DTD[13];
     return 1;
 }
-forward RotateHudMessage();
-public RotateHudMessage()
+
+stock UpdateHudTip(tip)
 {
-    new choice = random(9);
-    if(choice == LastHudMessage) choice = (choice + 1) % 9;
-    LastHudMessage = choice;
-    switch(choice)
+    switch(tip)
     {
-        case 0: TextDrawSetString(TD_HudPoruka, "~w~OPUSTITE SE U IGRI UZ >> ~b~/MP3");
-        case 1: TextDrawSetString(TD_HudPoruka, "~w~KOMANDE I POMOC: ~b~/HELP");
-        case 2: TextDrawSetString(TD_HudPoruka, "~w~PRIJAVITE PROBLEM: ~b~/ASKQ");
-        case 3: TextDrawSetString(TD_HudPoruka, "~w~POSAO I ZARADA: ~b~/POSAO");
-        case 4: TextDrawSetString(TD_HudPoruka, "SACUVAJTE NOVAC U BANCI");
-        case 5: TextDrawSetString(TD_HudPoruka, "~w~PRATITE RENT VOZILA: ~b~/UNRENT");
-        case 6: TextDrawSetString(TD_HudPoruka, "POSTUJTE ROLEPLAY PRAVILA");
-        case 7: TextDrawSetString(TD_HudPoruka, "OTVORITE MAPU I KORISTITE /GOTOMARKER");
-        case 8: TextDrawSetString(TD_HudPoruka, "UZIVAJTE NA BALKAN REVOLUTION RP");
+        case 0: TextDrawSetString(TD_HudPoruka, "POSLOVI I POMOC: /ASKQ");
+        case 1: TextDrawSetString(TD_HudPoruka, "CUVAJ NOVAC U BANCI");
+        case 2: TextDrawSetString(TD_HudPoruka, "POMOC ADMINA: /ASKQ");
+        case 3: TextDrawSetString(TD_HudPoruka, "REDOVNO KUPUJ HRANU");
+        case 4: TextDrawSetString(TD_HudPoruka, "RAZGOVOR ORGANIZACIJE: /F");
+        case 5: TextDrawSetString(TD_HudPoruka, "NE OTKRIVAJ LOZINKU");
+        case 6: TextDrawSetString(TD_HudPoruka, "POSJETI ZLATARU");
+        case 7: TextDrawSetString(TD_HudPoruka, "ZAKLJUCAJ VOZILO: /LOCK");
+        case 8: TextDrawSetString(TD_HudPoruka, "POZOVI MEHANICARA");
+        case 9: TextDrawSetString(TD_HudPoruka, "POSTUJ SAOBRACAJNA PRAVILA");
+        case 10: TextDrawSetString(TD_HudPoruka, "KOMANDE I POMOC: /HELP");
+        case 11: TextDrawSetString(TD_HudPoruka, "POSTUJ ROLEPLAY PRAVILA");
+        case 12: TextDrawSetString(TD_HudPoruka, "KUPI KUCU: /BUYHOUSE");
+        case 13: TextDrawSetString(TD_HudPoruka, "CUVAJ NOVAC U KUCNOM SEFU");
+        case 14: TextDrawSetString(TD_HudPoruka, "KUPI MOBILNI TELEFON");
+        case 15: TextDrawSetString(TD_HudPoruka, "POSTAVI OGLAS: /SMSAD");
+        case 16: TextDrawSetString(TD_HudPoruka, "PAZI SE POLICIJE");
+        case 17: TextDrawSetString(TD_HudPoruka, "SARADJUJ SA SVOJOM ORG");
+        case 18: TextDrawSetString(TD_HudPoruka, "KORISTI ANIMACIJE ZA PROVOD");
+        case 19: TextDrawSetString(TD_HudPoruka, "POSJETI BUTIK ODJECE");
+        case 20: TextDrawSetString(TD_HudPoruka, "ZAPOSLI SE I ZARADI");
+        case 21: TextDrawSetString(TD_HudPoruka, "ISTRAZI POSLOVE NA MAPI");
+        case 22: TextDrawSetString(TD_HudPoruka, "POLOZI VOZACKI ISPIT");
+        case 23: TextDrawSetString(TD_HudPoruka, "IZVADI DOZVOLU ZA ORUZJE");
+        case 24: TextDrawSetString(TD_HudPoruka, "NATOCI GORIVO: /FILL");
+        case 25: TextDrawSetString(TD_HudPoruka, "POPRAVI VOZILO KOD MEHANICARA");
+        case 26: TextDrawSetString(TD_HudPoruka, "BANKA CUVA TVOJ NOVAC");
+        case 27: TextDrawSetString(TD_HudPoruka, "STEDI I KUPI BIZNIS");
+        case 28: TextDrawSetString(TD_HudPoruka, "DRUZI SE S IGRACIMA NA TS3");
     }
     return 1;
 }
+
 stock CreateRevolutionPlayerHud(playerid)
 {
-    // Pet redova sa istom lijevom ivicom, kao na prvoj slici.
-    TD_NovacPlavi[playerid] = CreatePlayerTextDraw(playerid, 500.0, 99.0, "BANKA: 0 RSD");
+    TD_HudDatum[playerid] = CreatePlayerTextDraw(playerid, 509.000000, 434.000000, "00.00.0000");
+    PlayerTextDrawFont(playerid, TD_HudDatum[playerid], 2);
+    PlayerTextDrawLetterSize(playerid, TD_HudDatum[playerid], 0.158332, 0.899999);
+    PlayerTextDrawTextSize(playerid, TD_HudDatum[playerid], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, TD_HudDatum[playerid], 0);
+    PlayerTextDrawSetShadow(playerid, TD_HudDatum[playerid], 0);
+    PlayerTextDrawAlignment(playerid, TD_HudDatum[playerid], 2);
+    PlayerTextDrawColor(playerid, TD_HudDatum[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, TD_HudDatum[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, TD_HudDatum[playerid], 50);
+    PlayerTextDrawUseBox(playerid, TD_HudDatum[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, TD_HudDatum[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_HudDatum[playerid], 0);
+    TD_WantedHint[playerid] = CreatePlayerTextDraw(playerid, 505.000000, 416.000000, "IMATE 1 WANTED LEVELA  /DOSIJE");
+    PlayerTextDrawFont(playerid, TD_WantedHint[playerid], 2);
+    PlayerTextDrawLetterSize(playerid, TD_WantedHint[playerid], 0.195000, 0.950000);
+    PlayerTextDrawAlignment(playerid, TD_WantedHint[playerid], 2);
+    PlayerTextDrawColor(playerid, TD_WantedHint[playerid], 0xFF7777FF);
+    PlayerTextDrawSetOutline(playerid, TD_WantedHint[playerid], 1);
+    PlayerTextDrawBackgroundColor(playerid, TD_WantedHint[playerid], 0x000000FF);
+    PlayerTextDrawSetProportional(playerid, TD_WantedHint[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_WantedHint[playerid], 0);
+    TD_HudVrijeme[playerid] = CreatePlayerTextDraw(playerid, 543.000000, 434.000000, "00:00");
+    PlayerTextDrawFont(playerid, TD_HudVrijeme[playerid], 2);
+    PlayerTextDrawLetterSize(playerid, TD_HudVrijeme[playerid], 0.158000, 0.899999);
+    PlayerTextDrawTextSize(playerid, TD_HudVrijeme[playerid], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, TD_HudVrijeme[playerid], 0);
+    PlayerTextDrawSetShadow(playerid, TD_HudVrijeme[playerid], 0);
+    PlayerTextDrawAlignment(playerid, TD_HudVrijeme[playerid], 2);
+    PlayerTextDrawColor(playerid, TD_HudVrijeme[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, TD_HudVrijeme[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, TD_HudVrijeme[playerid], 50);
+    PlayerTextDrawUseBox(playerid, TD_HudVrijeme[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, TD_HudVrijeme[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_HudVrijeme[playerid], 0);
+    TD_NovacPlavi[playerid] = CreatePlayerTextDraw(playerid, 532.000000, 105.000000, "0$");
     PlayerTextDrawFont(playerid, TD_NovacPlavi[playerid], 2);
-    PlayerTextDrawLetterSize(playerid, TD_NovacPlavi[playerid], 0.24, 0.95);
-    PlayerTextDrawColor(playerid, TD_NovacPlavi[playerid], 0x4F91D9FF);
+    PlayerTextDrawLetterSize(playerid, TD_NovacPlavi[playerid], 0.237499, 1.000000);
+    PlayerTextDrawTextSize(playerid, TD_NovacPlavi[playerid], 400.000000, 17.000000);
     PlayerTextDrawSetOutline(playerid, TD_NovacPlavi[playerid], 1);
     PlayerTextDrawSetShadow(playerid, TD_NovacPlavi[playerid], 0);
-    PlayerTextDrawBackgroundColor(playerid, TD_NovacPlavi[playerid], 0x000000FF);
-
-    TD_Euro[playerid] = CreatePlayerTextDraw(playerid, 500.0, 112.0, "EURO: 0");
+    PlayerTextDrawAlignment(playerid, TD_NovacPlavi[playerid], 1);
+    PlayerTextDrawColor(playerid, TD_NovacPlavi[playerid], 1097458175);
+    PlayerTextDrawBackgroundColor(playerid, TD_NovacPlavi[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, TD_NovacPlavi[playerid], 50);
+    PlayerTextDrawUseBox(playerid, TD_NovacPlavi[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, TD_NovacPlavi[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_NovacPlavi[playerid], 0);
+    TD_Euro[playerid] = CreatePlayerTextDraw(playerid, 532.000000, 117.000000, "000000000");
     PlayerTextDrawFont(playerid, TD_Euro[playerid], 2);
-    PlayerTextDrawLetterSize(playerid, TD_Euro[playerid], 0.24, 0.95);
-    PlayerTextDrawColor(playerid, TD_Euro[playerid], 0xDF49D9FF);
+    PlayerTextDrawLetterSize(playerid, TD_Euro[playerid], 0.237499, 1.000000);
+    PlayerTextDrawTextSize(playerid, TD_Euro[playerid], 400.000000, 17.000000);
     PlayerTextDrawSetOutline(playerid, TD_Euro[playerid], 1);
     PlayerTextDrawSetShadow(playerid, TD_Euro[playerid], 0);
-    PlayerTextDrawBackgroundColor(playerid, TD_Euro[playerid], 0x000000FF);
-
-    TD_Zlato[playerid] = CreatePlayerTextDraw(playerid, 500.0, 125.0, "ZLATO: 0");
+    PlayerTextDrawAlignment(playerid, TD_Euro[playerid], 1);
+    PlayerTextDrawColor(playerid, TD_Euro[playerid], -905198081);
+    PlayerTextDrawBackgroundColor(playerid, TD_Euro[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Euro[playerid], 50);
+    PlayerTextDrawUseBox(playerid, TD_Euro[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Euro[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Euro[playerid], 0);
+    TD_Zlato[playerid] = CreatePlayerTextDraw(playerid, 539.000000, 129.000000, "000000000");
     PlayerTextDrawFont(playerid, TD_Zlato[playerid], 2);
-    PlayerTextDrawLetterSize(playerid, TD_Zlato[playerid], 0.24, 0.95);
-    PlayerTextDrawColor(playerid, TD_Zlato[playerid], 0xEAC746FF);
+    PlayerTextDrawLetterSize(playerid, TD_Zlato[playerid], 0.237499, 1.000000);
+    PlayerTextDrawTextSize(playerid, TD_Zlato[playerid], 400.000000, 17.000000);
     PlayerTextDrawSetOutline(playerid, TD_Zlato[playerid], 1);
     PlayerTextDrawSetShadow(playerid, TD_Zlato[playerid], 0);
-    PlayerTextDrawBackgroundColor(playerid, TD_Zlato[playerid], 0x000000FF);
-
-    TD_Grad[playerid] = CreatePlayerTextDraw(playerid, 500.0, 138.0, "BEOGRAD");
+    PlayerTextDrawAlignment(playerid, TD_Zlato[playerid], 1);
+    PlayerTextDrawColor(playerid, TD_Zlato[playerid], -65281);
+    PlayerTextDrawBackgroundColor(playerid, TD_Zlato[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Zlato[playerid], 50);
+    PlayerTextDrawUseBox(playerid, TD_Zlato[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Zlato[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Zlato[playerid], 0);
+    TD_Grad[playerid] = CreatePlayerTextDraw(playerid, 497.000000, 141.000000, "BEOGRAD");
     PlayerTextDrawFont(playerid, TD_Grad[playerid], 2);
-    PlayerTextDrawLetterSize(playerid, TD_Grad[playerid], 0.24, 0.95);
-    PlayerTextDrawColor(playerid, TD_Grad[playerid], 0xFFFFFFFF);
+    PlayerTextDrawLetterSize(playerid, TD_Grad[playerid], 0.237499, 1.000000);
+    PlayerTextDrawTextSize(playerid, TD_Grad[playerid], 400.000000, 17.000000);
     PlayerTextDrawSetOutline(playerid, TD_Grad[playerid], 1);
     PlayerTextDrawSetShadow(playerid, TD_Grad[playerid], 0);
-    PlayerTextDrawBackgroundColor(playerid, TD_Grad[playerid], 0x000000FF);
-
-    TD_Lokacija[playerid] = CreatePlayerTextDraw(playerid, 500.0, 151.0, "San Andreas");
+    PlayerTextDrawAlignment(playerid, TD_Grad[playerid], 1);
+    PlayerTextDrawColor(playerid, TD_Grad[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, TD_Grad[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Grad[playerid], 50);
+    PlayerTextDrawUseBox(playerid, TD_Grad[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Grad[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Grad[playerid], 0);
+    TD_Lokacija[playerid] = CreatePlayerTextDraw(playerid, 497.000000, 152.000000, "LOKACIJA");
     PlayerTextDrawFont(playerid, TD_Lokacija[playerid], 2);
-    PlayerTextDrawLetterSize(playerid, TD_Lokacija[playerid], 0.18, 0.82);
-    PlayerTextDrawColor(playerid, TD_Lokacija[playerid], 0xFFFFFFFF);
+    PlayerTextDrawLetterSize(playerid, TD_Lokacija[playerid], 0.190000, 0.900000);
+    PlayerTextDrawTextSize(playerid, TD_Lokacija[playerid], 640.000000, 17.000000);
     PlayerTextDrawSetOutline(playerid, TD_Lokacija[playerid], 1);
     PlayerTextDrawSetShadow(playerid, TD_Lokacija[playerid], 0);
-    PlayerTextDrawBackgroundColor(playerid, TD_Lokacija[playerid], 0x000000FF);
-
-
-    TD_HudVrijeme[playerid] = CreatePlayerTextDraw(playerid, 501.0, 434.0, "00.00.0000 00:00");
-    PlayerTextDrawFont(playerid, TD_HudVrijeme[playerid], 1);
-    PlayerTextDrawLetterSize(playerid, TD_HudVrijeme[playerid], 0.14, 0.72);
-    PlayerTextDrawColor(playerid, TD_HudVrijeme[playerid], 0xEEEEEEFF);
-    PlayerTextDrawSetOutline(playerid, TD_HudVrijeme[playerid], 1);
+    PlayerTextDrawAlignment(playerid, TD_Lokacija[playerid], 1);
+    PlayerTextDrawColor(playerid, TD_Lokacija[playerid], -1);
+    PlayerTextDrawBackgroundColor(playerid, TD_Lokacija[playerid], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Lokacija[playerid], 50);
+    PlayerTextDrawUseBox(playerid, TD_Lokacija[playerid], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Lokacija[playerid], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Lokacija[playerid], 0);
+    TD_Vozilo[playerid][0] = CreatePlayerTextDraw(playerid, 614.000000, 354.000000, "IME AUTA");
+    PlayerTextDrawFont(playerid, TD_Vozilo[playerid][0], 2);
+    PlayerTextDrawLetterSize(playerid, TD_Vozilo[playerid][0], 0.404166, 1.399999);
+    PlayerTextDrawTextSize(playerid, TD_Vozilo[playerid][0], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, TD_Vozilo[playerid][0], 1);
+    PlayerTextDrawSetShadow(playerid, TD_Vozilo[playerid][0], 0);
+    PlayerTextDrawAlignment(playerid, TD_Vozilo[playerid][0], 3);
+    PlayerTextDrawColor(playerid, TD_Vozilo[playerid][0], -1);
+    PlayerTextDrawBackgroundColor(playerid, TD_Vozilo[playerid][0], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Vozilo[playerid][0], 50);
+    PlayerTextDrawUseBox(playerid, TD_Vozilo[playerid][0], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Vozilo[playerid][0], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Vozilo[playerid][0], 0);
+    TD_Vozilo[playerid][1] = CreatePlayerTextDraw(playerid, 510.000000, 377.000000, "192");
+    PlayerTextDrawFont(playerid, TD_Vozilo[playerid][1], 2);
+    PlayerTextDrawLetterSize(playerid, TD_Vozilo[playerid][1], 0.466666, 1.799999);
+    PlayerTextDrawTextSize(playerid, TD_Vozilo[playerid][1], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, TD_Vozilo[playerid][1], 1);
+    PlayerTextDrawSetShadow(playerid, TD_Vozilo[playerid][1], 0);
+    PlayerTextDrawAlignment(playerid, TD_Vozilo[playerid][1], 1);
+    PlayerTextDrawColor(playerid, TD_Vozilo[playerid][1], 2094792959);
+    PlayerTextDrawBackgroundColor(playerid, TD_Vozilo[playerid][1], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Vozilo[playerid][1], 50);
+    PlayerTextDrawUseBox(playerid, TD_Vozilo[playerid][1], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Vozilo[playerid][1], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Vozilo[playerid][1], 0);
+    TD_Vozilo[playerid][2] = CreatePlayerTextDraw(playerid, 590.000000, 375.000000, "236.2");
+    PlayerTextDrawFont(playerid, TD_Vozilo[playerid][2], 2);
+    PlayerTextDrawLetterSize(playerid, TD_Vozilo[playerid][2], 0.150000, 0.899999);
+    PlayerTextDrawTextSize(playerid, TD_Vozilo[playerid][2], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, TD_Vozilo[playerid][2], 1);
+    PlayerTextDrawSetShadow(playerid, TD_Vozilo[playerid][2], 0);
+    PlayerTextDrawAlignment(playerid, TD_Vozilo[playerid][2], 1);
+    PlayerTextDrawColor(playerid, TD_Vozilo[playerid][2], -1);
+    PlayerTextDrawBackgroundColor(playerid, TD_Vozilo[playerid][2], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Vozilo[playerid][2], 50);
+    PlayerTextDrawUseBox(playerid, TD_Vozilo[playerid][2], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Vozilo[playerid][2], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Vozilo[playerid][2], 0);
+    TD_Vozilo[playerid][3] = CreatePlayerTextDraw(playerid, 585.000000, 387.000000, "NAFTA");
+    PlayerTextDrawFont(playerid, TD_Vozilo[playerid][3], 2);
+    PlayerTextDrawLetterSize(playerid, TD_Vozilo[playerid][3], 0.150000, 0.899999);
+    PlayerTextDrawTextSize(playerid, TD_Vozilo[playerid][3], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, TD_Vozilo[playerid][3], 1);
+    PlayerTextDrawSetShadow(playerid, TD_Vozilo[playerid][3], 0);
+    PlayerTextDrawAlignment(playerid, TD_Vozilo[playerid][3], 1);
+    PlayerTextDrawColor(playerid, TD_Vozilo[playerid][3], -1);
+    PlayerTextDrawBackgroundColor(playerid, TD_Vozilo[playerid][3], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Vozilo[playerid][3], 50);
+    PlayerTextDrawUseBox(playerid, TD_Vozilo[playerid][3], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Vozilo[playerid][3], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Vozilo[playerid][3], 0);
+    TD_Vozilo[playerid][4] = CreatePlayerTextDraw(playerid, 602.000000, 398.000000, "8553");
+    PlayerTextDrawFont(playerid, TD_Vozilo[playerid][4], 2);
+    PlayerTextDrawLetterSize(playerid, TD_Vozilo[playerid][4], 0.150000, 0.899999);
+    PlayerTextDrawTextSize(playerid, TD_Vozilo[playerid][4], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, TD_Vozilo[playerid][4], 1);
+    PlayerTextDrawSetShadow(playerid, TD_Vozilo[playerid][4], 0);
+    PlayerTextDrawAlignment(playerid, TD_Vozilo[playerid][4], 1);
+    PlayerTextDrawColor(playerid, TD_Vozilo[playerid][4], -1);
+    PlayerTextDrawBackgroundColor(playerid, TD_Vozilo[playerid][4], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Vozilo[playerid][4], 50);
+    PlayerTextDrawUseBox(playerid, TD_Vozilo[playerid][4], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Vozilo[playerid][4], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Vozilo[playerid][4], 0);
+    TD_Vozilo[playerid][5] = CreatePlayerTextDraw(playerid, 594.000000, 410.000000, "3");
+    PlayerTextDrawFont(playerid, TD_Vozilo[playerid][5], 2);
+    PlayerTextDrawLetterSize(playerid, TD_Vozilo[playerid][5], 0.150000, 0.899999);
+    PlayerTextDrawTextSize(playerid, TD_Vozilo[playerid][5], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, TD_Vozilo[playerid][5], 1);
+    PlayerTextDrawSetShadow(playerid, TD_Vozilo[playerid][5], 0);
+    PlayerTextDrawAlignment(playerid, TD_Vozilo[playerid][5], 1);
+    PlayerTextDrawColor(playerid, TD_Vozilo[playerid][5], -1);
+    PlayerTextDrawBackgroundColor(playerid, TD_Vozilo[playerid][5], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Vozilo[playerid][5], 50);
+    PlayerTextDrawUseBox(playerid, TD_Vozilo[playerid][5], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Vozilo[playerid][5], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Vozilo[playerid][5], 0);
+    TD_Vozilo[playerid][6] = CreatePlayerTextDraw(playerid, 615.000000, 375.000000, "250.0");
+    PlayerTextDrawFont(playerid, TD_Vozilo[playerid][6], 2);
+    PlayerTextDrawLetterSize(playerid, TD_Vozilo[playerid][6], 0.150000, 0.899999);
+    PlayerTextDrawTextSize(playerid, TD_Vozilo[playerid][6], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, TD_Vozilo[playerid][6], 1);
+    PlayerTextDrawSetShadow(playerid, TD_Vozilo[playerid][6], 0);
+    PlayerTextDrawAlignment(playerid, TD_Vozilo[playerid][6], 1);
+    PlayerTextDrawColor(playerid, TD_Vozilo[playerid][6], -16776961);
+    PlayerTextDrawBackgroundColor(playerid, TD_Vozilo[playerid][6], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Vozilo[playerid][6], 50);
+    PlayerTextDrawUseBox(playerid, TD_Vozilo[playerid][6], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Vozilo[playerid][6], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Vozilo[playerid][6], 0);
+    TD_Vozilo[playerid][7] = CreatePlayerTextDraw(playerid, 605.000000, 410.000000, "5");
+    PlayerTextDrawFont(playerid, TD_Vozilo[playerid][7], 2);
+    PlayerTextDrawLetterSize(playerid, TD_Vozilo[playerid][7], 0.150000, 0.899999);
+    PlayerTextDrawTextSize(playerid, TD_Vozilo[playerid][7], 400.000000, 17.000000);
+    PlayerTextDrawSetOutline(playerid, TD_Vozilo[playerid][7], 1);
+    PlayerTextDrawSetShadow(playerid, TD_Vozilo[playerid][7], 0);
+    PlayerTextDrawAlignment(playerid, TD_Vozilo[playerid][7], 1);
+    PlayerTextDrawColor(playerid, TD_Vozilo[playerid][7], -16776961);
+    PlayerTextDrawBackgroundColor(playerid, TD_Vozilo[playerid][7], 255);
+    PlayerTextDrawBoxColor(playerid, TD_Vozilo[playerid][7], 50);
+    PlayerTextDrawUseBox(playerid, TD_Vozilo[playerid][7], 0);
+    PlayerTextDrawSetProportional(playerid, TD_Vozilo[playerid][7], 1);
+    PlayerTextDrawSetSelectable(playerid, TD_Vozilo[playerid][7], 0);
     return 1;
 }
 
 stock DestroyRevolutionPlayerHud(playerid)
 {
+    PlayerTextDrawDestroy(playerid, TD_HudDatum[playerid]);
+    PlayerTextDrawDestroy(playerid, TD_HudVrijeme[playerid]);
+    PlayerTextDrawDestroy(playerid, TD_WantedHint[playerid]);
     PlayerTextDrawDestroy(playerid, TD_NovacPlavi[playerid]);
     PlayerTextDrawDestroy(playerid, TD_Euro[playerid]);
     PlayerTextDrawDestroy(playerid, TD_Zlato[playerid]);
     PlayerTextDrawDestroy(playerid, TD_Grad[playerid]);
     PlayerTextDrawDestroy(playerid, TD_Lokacija[playerid]);
-
-    PlayerTextDrawDestroy(playerid, TD_HudVrijeme[playerid]);
+    for(new i = 0; i < 8; i++) PlayerTextDrawDestroy(playerid, TD_Vozilo[playerid][i]);
+    VoziloHudShown[playerid] = false;
     return 1;
 }
 
 stock ShowRevolutionHud(playerid)
 {
-    TextDrawShowForPlayer(playerid, TD_ServerBalkan);
-    for(new i = 0; i < HUD_STATIC_PARTS; i++) TextDrawShowForPlayer(playerid, TD_HudParts[i]);
-    TextDrawShowForPlayer(playerid, TD_HudPoruka);
+    for(new i = 0; i < 41; i++)
+    {
+        if(i == 25 || i == 26 || i == 34 || i == 36 || i == 38 || i == 39 || i == 40) continue;
+        TextDrawShowForPlayer(playerid, TD_DTD[i]);
+    }
+    PlayerTextDrawShow(playerid, TD_HudDatum[playerid]);
     PlayerTextDrawShow(playerid, TD_HudVrijeme[playerid]);
+    UpdateWantedHint(playerid);
+    return 1;
+}
+
+stock VehicleHudNoFuel(model)
+{
+    return (model == 481 || model == 509 || model == 510 || model == 449 ||
+            model == 537 || model == 538 || model == 569 || model == 570 || model == 590);
+}
+
+stock VehicleHudFuelType(model, output[], size)
+{
+    if(VehicleHudNoFuel(model)) format(output, size, "NEMA");
+    else if(model == 403 || model == 406 || model == 407 || model == 408 ||
+            model == 414 || model == 416 || model == 428 || model == 431 ||
+            model == 437 || model == 443 || model == 455 || model == 456 ||
+            model == 498 || model == 499 || model == 514 || model == 515 ||
+            model == 524 || model == 525 || model == 531 || model == 544 ||
+            model == 552 || model == 578 || model == 582 || model == 588 || model == 609)
+        format(output, size, "NAFTA");
+    else if(model == 417 || model == 425 || model == 447 || model == 469 ||
+            model == 476 || model == 487 || model == 488 || model == 497 ||
+            model == 511 || model == 512 || model == 513 || model == 519 ||
+            model == 520 || model == 548 || model == 553 || model == 563 ||
+            model == 577 || model == 592 || model == 593)
+        format(output, size, "KEROZIN");
+    else format(output, size, "BENZIN");
+    return 1;
+}
+
+stock VehicleHudDamageLevel(vehicleid)
+{
+    new Float:health;
+    GetVehicleHealth(vehicleid, health);
+    if(health < 300.0) return 5;
+    if(health < 450.0) return 4;
+    if(health < 600.0) return 3;
+    if(health < 750.0) return 2;
+    if(health < 900.0) return 1;
+    return 0;
+}
+
+stock VehicleHudRepair(vehicleid)
+{
+    if(!RepairVehicle(vehicleid)) return 0;
+    SetVehicleHealth(vehicleid, 1000.0);
+    VehicleHudBrokenNotice[vehicleid] = false;
+    VehicleHudStalled[vehicleid] = false;
+    VehicleHudNextStartTry[vehicleid] = 0;
+    VehicleHudNextStallAt[vehicleid] = 0;
+    return 1;
+}
+
+stock VehicleHudUpdateSpeed(playerid, vehicleid)
+{
+    new Float:vx, Float:vy, Float:vz, label[12];
+    GetVehicleVelocity(vehicleid, vx, vy, vz);
+    new speed = floatround(floatsqroot(vx * vx + vy * vy + vz * vz) * 180.0);
+    if(speed < 0) speed = 0;
+    if(speed == VehicleHudLastSpeed[playerid]) return 1;
+    format(label, sizeof(label), "%d", speed);
+    PlayerTextDrawSetString(playerid, TD_Vozilo[playerid][1], label);
+    VehicleHudLastSpeed[playerid] = speed;
+    return 1;
+}
+
+forward UpdateVehicleSpeed();
+public UpdateVehicleSpeed()
+{
+    for(new p = 0; p < MAX_PLAYERS; p++)
+    {
+        if(!IsPlayerConnected(p)) continue;
+        new playerState = GetPlayerState(p);
+        if(playerState != PLAYER_STATE_DRIVER && playerState != PLAYER_STATE_PASSENGER) continue;
+        new vehicleid = GetPlayerVehicleID(p);
+        if(vehicleid <= 0 || vehicleid >= MAX_VEHICLES || !GetVehicleModel(vehicleid)) continue;
+        if(playerState == PLAYER_STATE_DRIVER)
+        {
+            new damage = VehicleHudDamageLevel(vehicleid);
+            if(damage == 5)
+            {
+                new engine, lights, alarm, doors, bonnet, boot, objective;
+                GetVehicleParamsEx(vehicleid, engine, lights, alarm, doors, bonnet, boot, objective);
+                if(engine != 0)
+                    SetVehicleParamsEx(vehicleid, 0, lights, alarm, doors, bonnet, boot, objective);
+                SetVehicleVelocity(vehicleid, 0.0, 0.0, 0.0);
+                if(!VehicleHudBrokenNotice[vehicleid])
+                {
+                    SendClientMessage(p, 0xFF7777FF, "[VOZILO]: Kvarovi su 5/5. Motor je stao; vozilo treba popraviti.");
+                    VehicleHudBrokenNotice[vehicleid] = true;
+                }
+            }
+            else
+            {
+                VehicleHudBrokenNotice[vehicleid] = false;
+                if(damage > 0)
+                {
+                    new Float:vx, Float:vy, Float:vz;
+                    GetVehicleVelocity(vehicleid, vx, vy, vz);
+                    new Float:speed = floatsqroot(vx * vx + vy * vy + vz * vz) * 180.0;
+                    new Float:limit = 0.0, Float:factor = 1.0;
+                    switch(damage)
+                    {
+                        case 1: { limit = 170.0; factor = 0.998; }
+                        case 2: { limit = 140.0; factor = 0.994; }
+                        case 3: { limit = 110.0; factor = 0.990; }
+                        case 4: { limit = 70.0; factor = 0.980; }
+                    }
+                    if(speed > limit) factor = limit / speed;
+                    if(speed > 30.0 && factor < 1.0)
+                        SetVehicleVelocity(vehicleid, vx * factor, vy * factor, vz * factor);
+                }
+                if(damage == 4)
+                {
+                    new engine, lights, alarm, doors, bonnet, boot, objective;
+                    GetVehicleParamsEx(vehicleid, engine, lights, alarm, doors, bonnet, boot, objective);
+                    if(VehicleHudStalled[vehicleid])
+                    {
+                        if(engine != 0)
+                            SetVehicleParamsEx(vehicleid, 0, lights, alarm, doors, bonnet, boot, objective);
+                        SetVehicleVelocity(vehicleid, 0.0, 0.0, 0.0);
+                    }
+                    else
+                    {
+                        // Neki motori se mogu kretati i kada je native engine parametar 0.
+                        new Float:vx, Float:vy, Float:vz;
+                        GetVehicleVelocity(vehicleid, vx, vy, vz);
+                        new Float:speed = floatsqroot(vx * vx + vy * vy + vz * vz) * 180.0;
+                        if(engine == 1 || speed > 3.0)
+                        {
+                            if(VehicleHudNextStallAt[vehicleid] == 0)
+                                VehicleHudNextStallAt[vehicleid] = gettime() + 15 + random(11);
+                            if(gettime() >= VehicleHudNextStallAt[vehicleid])
+                            {
+                                SetVehicleParamsEx(vehicleid, 0, lights, alarm, doors, bonnet, boot, objective);
+                                VehicleHudStalled[vehicleid] = true;
+                                VehicleHudNextStallAt[vehicleid] = 0;
+                                SetVehicleVelocity(vehicleid, 0.0, 0.0, 0.0);
+                                SendClientMessage(p, 0xFF7777FF, "[VOZILO]: Motor se ugasio zbog kvarova (4/5). Pokusajte /engine.");
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    VehicleHudNextStallAt[vehicleid] = 0;
+                    VehicleHudStalled[vehicleid] = false;
+                }
+            }
+        }
+        if(VoziloHudShown[p]) VehicleHudUpdateSpeed(p, vehicleid);
+    }
+    return 1;
+}
+
+// Stalna vozila imaju stabilan ID u Vozila.inc. Kilometraza pripada vozilu,
+// ne vozacu, i zato ostaje ista kada se vozilo jednog dana proda drugom igracu.
+stock VehicleHudSaveKm(vehicleid)
+{
+    if(vehicleid <= 0 || vehicleid > ZadnjePostarskoVozilo || !VehicleHudInitialized[vehicleid] || GetVehicleModel(vehicleid) == 0) return 0;
+    new file[64];
+    format(file, sizeof(file), "Kilometraza/%d.ini", vehicleid);
+    if(!DOF2_FileExists(file)) DOF2_CreateFile(file);
+    DOF2_SetInt(file, "Model", GetVehicleModel(vehicleid));
+    DOF2_SetFloat(file, "Km", VehicleHudKm[vehicleid]);
+    DOF2_SaveFile();
+    return 1;
+}
+
+stock VehicleHudLoadKm(vehicleid)
+{
+    if(vehicleid <= 0 || vehicleid > ZadnjePostarskoVozilo) return 0;
+    new file[64];
+    format(file, sizeof(file), "Kilometraza/%d.ini", vehicleid);
+    if(!DOF2_FileExists(file)) return 0;
+    if(DOF2_GetInt(file, "Model") != GetVehicleModel(vehicleid)) return 0;
+    VehicleHudKm[vehicleid] = DOF2_GetFloat(file, "Km");
+    if(VehicleHudKm[vehicleid] < 0.0) VehicleHudKm[vehicleid] = 0.0;
+    return 1;
+}
+
+public OnGameModeExit()
+{
+    for(new vehicleid = 1; vehicleid <= ZadnjePostarskoVozilo; vehicleid++)
+        if(VehicleHudInitialized[vehicleid]) VehicleHudSaveKm(vehicleid);
+    return 1;
+}
+
+stock VehicleHudInitData(vehicleid)
+{
+    if(vehicleid <= 0 || vehicleid >= MAX_VEHICLES || GetVehicleModel(vehicleid) == 0) return 0;
+    if(!VehicleHudInitialized[vehicleid])
+    {
+        VehicleHudInitialized[vehicleid] = true;
+        VehicleHudFuel[vehicleid] = VehicleHudNoFuel(GetVehicleModel(vehicleid)) ? 0.0 : 250.0;
+        VehicleHudKm[vehicleid] = 0.0;
+        VehicleHudLoadKm(vehicleid);
+        VehicleHudLastPosValid[vehicleid] = false;
+        VehicleHudOutOfFuel[vehicleid] = false;
+    }
+    return 1;
+}
+
+stock VehicleHudStopForNoFuel(vehicleid)
+{
+    if(VehicleHudOutOfFuel[vehicleid]) return 1;
+    new engine, lights, alarm, doors, bonnet, boot, objective;
+    GetVehicleParamsEx(vehicleid, engine, lights, alarm, doors, bonnet, boot, objective);
+    SetVehicleParamsEx(vehicleid, 0, lights, alarm, doors, bonnet, boot, objective);
+    VehicleHudOutOfFuel[vehicleid] = true;
+    for(new p = 0; p < MAX_PLAYERS; p++)
+        if(IsPlayerConnected(p) && IsPlayerInVehicle(p, vehicleid))
+            SendClientMessage(p, 0xFF7777FF, "[GORIVO]: Rezervoar je prazan. Zaustavite se i upisite /fill.");
+    return 1;
+}
+
+stock VehicleHudHide(playerid)
+{
+    if(!VoziloHudShown[playerid]) return 0;
+    for(new i = 41; i <= 60; i++)
+    {
+        if(i == 46 || i == 47 || i == 53 || i == 54 || i == 55 || i == 56 || i == 58 || i == 60) continue;
+        TextDrawHideForPlayer(playerid, TD_DTD[i]);
+    }
+    for(new i = 0; i < 8; i++) PlayerTextDrawHide(playerid, TD_Vozilo[playerid][i]);
+    VoziloHudShown[playerid] = false;
+    VehicleHudLastSpeed[playerid] = -1;
+    return 1;
+}
+
+stock VehicleHudShow(playerid)
+{
+    if(VoziloHudShown[playerid]) return 0;
+    for(new i = 41; i <= 60; i++)
+    {
+        if(i == 46 || i == 47 || i == 53 || i == 54 || i == 55 || i == 56 || i == 58 || i == 60) continue;
+        TextDrawShowForPlayer(playerid, TD_DTD[i]);
+    }
+    for(new i = 0; i < 8; i++) PlayerTextDrawShow(playerid, TD_Vozilo[playerid][i]);
+    VoziloHudShown[playerid] = true;
+    VehicleHudLastSpeed[playerid] = -1;
+    return 1;
+}
+
+stock VehicleHudUpdatePlayer(playerid, vehicleid)
+{
+    new model = GetVehicleModel(vehicleid);
+    if(model < 400 || model > 611) return VehicleHudHide(playerid);
+    new name[32], label[64], fuelType[16];
+    format(name, sizeof(name), "%s", VehicleHudModelNames[model - 400]);
+    PlayerTextDrawSetString(playerid, TD_Vozilo[playerid][0], name);
+    VehicleHudUpdateSpeed(playerid, vehicleid);
+    format(label, sizeof(label), "%.1f", VehicleHudFuel[vehicleid]);
+    PlayerTextDrawSetString(playerid, TD_Vozilo[playerid][2], label);
+    VehicleHudFuelType(model, fuelType, sizeof(fuelType));
+    PlayerTextDrawSetString(playerid, TD_Vozilo[playerid][3], fuelType);
+    format(label, sizeof(label), "%d", floatround(VehicleHudKm[vehicleid], floatround_floor));
+    PlayerTextDrawSetString(playerid, TD_Vozilo[playerid][4], label);
+    format(label, sizeof(label), "%d", VehicleHudDamageLevel(vehicleid));
+    PlayerTextDrawSetString(playerid, TD_Vozilo[playerid][5], label);
+    if(VehicleHudNoFuel(model)) PlayerTextDrawSetString(playerid, TD_Vozilo[playerid][6], "0.0");
+    else PlayerTextDrawSetString(playerid, TD_Vozilo[playerid][6], "250.0");
+    PlayerTextDrawSetString(playerid, TD_Vozilo[playerid][7], "5");
+    VehicleHudShow(playerid);
+    return 1;
+}
+
+forward UpdateVehicleHud();
+public UpdateVehicleHud()
+{
+    for(new p = 0; p < MAX_PLAYERS; p++)
+    {
+        if(!IsPlayerConnected(p)) continue;
+        new playerState = GetPlayerState(p);
+        if(playerState != PLAYER_STATE_DRIVER && playerState != PLAYER_STATE_PASSENGER)
+        {
+            VehicleHudHide(p);
+            continue;
+        }
+        new vehicleid = GetPlayerVehicleID(p);
+        if(!VehicleHudInitData(vehicleid))
+        {
+            VehicleHudHide(p);
+            continue;
+        }
+        if(playerState == PLAYER_STATE_DRIVER)
+        {
+            new Float:x, Float:y, Float:z;
+            GetVehiclePos(vehicleid, x, y, z);
+            if(VehicleHudLastPosValid[vehicleid])
+            {
+                new Float:dx = x - VehicleHudLastX[vehicleid];
+                new Float:dy = y - VehicleHudLastY[vehicleid];
+                new Float:dz = z - VehicleHudLastZ[vehicleid];
+                new Float:metres = floatsqroot(dx * dx + dy * dy + dz * dz);
+                if(metres < 100.0 && metres > 0.1)
+                {
+                    new oldTenthKm = floatround(VehicleHudKm[vehicleid] * 10.0, floatround_floor);
+                    VehicleHudKm[vehicleid] += metres / 1000.0;
+                    if(floatround(VehicleHudKm[vehicleid] * 10.0, floatround_floor) > oldTenthKm)
+                        VehicleHudSaveKm(vehicleid);
+                    if(!VehicleHudNoFuel(GetVehicleModel(vehicleid)) && VehicleHudFuel[vehicleid] > 0.0)
+                    {
+                        new engine, lights, alarm, doors, bonnet, boot, objective;
+                        GetVehicleParamsEx(vehicleid, engine, lights, alarm, doors, bonnet, boot, objective);
+                        if(engine == 1 || engine == -1)
+                        {
+                            VehicleHudFuel[vehicleid] -= metres * 0.00016; // 16 litara / 100 km.
+                            if(VehicleHudFuel[vehicleid] <= 0.0)
+                            {
+                                VehicleHudFuel[vehicleid] = 0.0;
+                                VehicleHudStopForNoFuel(vehicleid);
+                            }
+                        }
+                    }
+                }
+            }
+            VehicleHudLastX[vehicleid] = x;
+            VehicleHudLastY[vehicleid] = y;
+            VehicleHudLastZ[vehicleid] = z;
+            VehicleHudLastPosValid[vehicleid] = true;
+            if(VehicleHudOutOfFuel[vehicleid]) SetVehicleVelocity(vehicleid, 0.0, 0.0, 0.0);
+        }
+        VehicleHudUpdatePlayer(p, vehicleid);
+    }
+    return 1;
+}
+
+CMD:fill(playerid, params[])
+{
+    if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER)
+        return SendClientMessage(playerid, 0xFF7777FF, "[GORIVO]: Morate biti vozac vozila.");
+    new vehicleid = GetPlayerVehicleID(playerid);
+    if(!VehicleHudInitData(vehicleid))
+        return SendClientMessage(playerid, 0xFF7777FF, "[GORIVO]: Vozilo nije dostupno.");
+    if(VehicleHudNoFuel(GetVehicleModel(vehicleid)))
+        return SendClientMessage(playerid, 0xFF7777FF, "[GORIVO]: Ovo vozilo ne koristi gorivo.");
+    new Float:vx, Float:vy, Float:vz;
+    GetVehicleVelocity(vehicleid, vx, vy, vz);
+    if(floatsqroot(vx * vx + vy * vy + vz * vz) * 180.0 > 3.0)
+        return SendClientMessage(playerid, 0xFF7777FF, "[GORIVO]: Zaustavite vozilo prije tocenja.");
+    new engine, lights, alarm, doors, bonnet, boot, objective;
+    GetVehicleParamsEx(vehicleid, engine, lights, alarm, doors, bonnet, boot, objective);
+    if(engine == 1)
+        return SendClientMessage(playerid, 0xFF7777FF, "[GORIVO]: Prvo ugasite motor komandom /engine.");
+    new Float:missing = 250.0 - VehicleHudFuel[vehicleid];
+    if(missing < 0.1)
+        return SendClientMessage(playerid, 0xFF7777FF, "[GORIVO]: Rezervoar je vec pun.");
+    new price = floatround(missing * 10.0, floatround_ceil);
+    if(GetPlayerMoney(playerid) < price)
+        return SendClientMessage(playerid, 0xFF7777FF, "[GORIVO]: Nemate dovoljno RSD za pun rezervoar.");
+    GivePlayerMoney(playerid, -price);
+    PlayerInfo[playerid][pNovac] = GetPlayerMoney(playerid);
+    VehicleHudFuel[vehicleid] = 250.0;
+    VehicleHudOutOfFuel[vehicleid] = false;
+    new name[MAX_PLAYER_NAME], file[128], message[128];
+    GetPlayerName(playerid, name, sizeof(name));
+    format(file, sizeof(file), "Korisnici/%s.ini", name);
+    if(DOF2_FileExists(file))
+    {
+        DOF2_SetInt(file, "Novac", PlayerInfo[playerid][pNovac]);
+        DOF2_SaveFile();
+    }
+    format(message, sizeof(message), "[GORIVO]: Natoceno %.1f litara za %d RSD. Upalite motor komandom /engine.", missing, price);
+    SendClientMessage(playerid, 0x33CCFFFF, message);
+    VehicleHudUpdatePlayer(playerid, vehicleid);
+    return 1;
+}
+
+public OnVehicleSpawn(vehicleid)
+{
+    if(vehicleid > 0 && vehicleid < MAX_VEHICLES)
+    {
+        VehicleHudFuel[vehicleid] = VehicleHudNoFuel(GetVehicleModel(vehicleid)) ? 0.0 : 250.0;
+        VehicleHudLastPosValid[vehicleid] = false;
+        VehicleHudOutOfFuel[vehicleid] = false;
+        if(!VehicleHudInitialized[vehicleid]) VehicleHudLoadKm(vehicleid);
+        VehicleHudInitialized[vehicleid] = true;
+        VehicleHudBrokenNotice[vehicleid] = false;
+        VehicleHudStalled[vehicleid] = false;
+        VehicleHudNextStartTry[vehicleid] = 0;
+        VehicleHudNextStallAt[vehicleid] = 0;
+    }
     return 1;
 }
 
 stock UpdateRevolutionHudData(playerid)
 {
-    if(!GetPVarInt(playerid, "BR_LoggedIn")) return 0;
-    new ime[MAX_PLAYER_NAME], file[128], label[64];
-    GetPlayerName(playerid, ime, sizeof(ime));
-    format(file, sizeof(file), "Korisnici/%s.ini", ime);
-    if(DOF2_FileExists(file))
-    {
-
-        new euro = DOF2_IsSet(file, "Euro") ? DOF2_GetInt(file, "Euro") : 0;
-        format(label, sizeof(label), "EURO: %d", euro);
-        PlayerTextDrawSetString(playerid, TD_Euro[playerid], label);
-        PlayerTextDrawShow(playerid, TD_Euro[playerid]);
-    }
-    new hour, minute, second, day, month, year;
+    new hour, minute, second, day, month, year, label[64];
     gettime(hour, minute, second);
     if(minute != LastHudMinute[playerid])
     {
         getdate(year, month, day);
-        format(label, sizeof(label), "%02d.%02d.%04d %02d:%02d", day, month, year, hour, minute);
+        format(label, sizeof(label), "%02d.%02d.%04d", day, month, year);
+        PlayerTextDrawSetString(playerid, TD_HudDatum[playerid], label);
+        format(label, sizeof(label), "%02d:%02d", hour, minute);
         PlayerTextDrawSetString(playerid, TD_HudVrijeme[playerid], label);
         LastHudMinute[playerid] = minute;
     }
+    if(!GetPVarInt(playerid, "BR_LoggedIn")) return 0;
+    new ime[MAX_PLAYER_NAME], file[128];
+    GetPlayerName(playerid, ime, sizeof(ime));
+    format(file, sizeof(file), "Korisnici/%s.ini", ime);
+    if(DOF2_FileExists(file))
+    {
+        new bank = DOF2_IsSet(file, "Banka") ? DOF2_GetInt(file, "Banka") : 0;
+        UpdateBankaTD(playerid, bank);
+        new euro = DOF2_IsSet(file, "Euro") ? DOF2_GetInt(file, "Euro") : 0;
+        format(label, sizeof(label), "%d", euro);
+        PlayerTextDrawSetString(playerid, TD_Euro[playerid], label);
+        PlayerTextDrawShow(playerid, TD_Euro[playerid]);
+    }
     return 1;
 }
+
 stock UpdateZlatoTD(playerid)
 {
-    new string[32];
-    format(string, sizeof(string), "ZLATO: %d", PlayerZlato[playerid]);
-
-    PlayerTextDrawSetString(playerid, TD_Zlato[playerid], string);
+    new label[32];
+    format(label, sizeof(label), "%d", PlayerZlato[playerid]);
+    PlayerTextDrawSetString(playerid, TD_Zlato[playerid], label);
     PlayerTextDrawShow(playerid, TD_Zlato[playerid]);
     return 1;
 }
+
 stock UpdateBankaTD(playerid, amount)
 {
-    new string[32];
-    format(string, sizeof(string), "BANKA: %d RSD", amount);
-
-    PlayerTextDrawSetString(playerid, TD_NovacPlavi[playerid], string);
+    new label[32];
+    format(label, sizeof(label), "%d$", amount);
+    PlayerTextDrawSetString(playerid, TD_NovacPlavi[playerid], label);
     PlayerTextDrawShow(playerid, TD_NovacPlavi[playerid]);
     return 1;
 }
@@ -5971,6 +8193,17 @@ CMD:setleader(playerid, params[])
     }
 
     PlayerInfo[targetid][pLider] = orgid;
+    if(orgid > 0) PlayerOrg[targetid] = orgid;
+    else
+    {
+        // Kad se skine lider, ostaje njegova stvarna clanska organizacija.
+        PlayerOrg[targetid] = 0;
+        if(DOF2_FileExists(player_file))
+        {
+            PlayerOrg[targetid] = DOF2_GetInt(player_file, "Clan");
+            if(PlayerOrg[targetid] == 0) PlayerOrg[targetid] = DOF2_GetInt(player_file, "Member");
+        }
+    }
     SetPlayerSkin(targetid, novi_skin);
 
     new string[140];
@@ -5997,6 +8230,106 @@ public IzvrsiKick(playerid)
     Kick(playerid);
     return 1;
 }
+stock HasAdminCommandAccess(playerid)
+{
+    if(IsPlayerAdmin(playerid)) return 1;
+    if(!GetPVarInt(playerid, "BR_LoggedIn")) return 0;
+    new name[MAX_PLAYER_NAME], file[128];
+    GetPlayerName(playerid, name, sizeof(name));
+    format(file, sizeof(file), "Korisnici/%s.ini", name);
+    return (DOF2_FileExists(file) && DOF2_GetInt(file, "Admin") >= 1);
+}
+
+CMD:goto(playerid, params[])
+{
+    if(!HasAdminCommandAccess(playerid))
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Samo admin moze koristiti /goto.");
+    new destination, targetid;
+    if(sscanf(params, "uu", destination, targetid))
+        return SendClientMessage(playerid, 0xAFAFAFFF, "KORISTI: /goto [kod koga] [koga]");
+    if(!IsPlayerConnected(destination) || !IsPlayerConnected(targetid))
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Oba igraca moraju biti online.");
+    if(destination == targetid)
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Odaberite dva razlicita igraca.");
+    if(GetPlayerState(destination) == PLAYER_STATE_WASTED || GetPlayerState(destination) == PLAYER_STATE_NONE)
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Igrac kod kojeg teleportujete mora biti ziv i spawnovan.");
+    if(GetPlayerState(targetid) == PLAYER_STATE_WASTED || GetPlayerState(targetid) == PLAYER_STATE_NONE)
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Igrac kojeg teleportujete mora biti ziv i spawnovan.");
+
+    new Float:x, Float:y, Float:z;
+    GetPlayerPos(destination, x, y, z);
+    if(IsPlayerInAnyVehicle(targetid)) RemovePlayerFromVehicle(targetid);
+    SetPlayerInterior(targetid, GetPlayerInterior(destination));
+    SetPlayerVirtualWorld(targetid, GetPlayerVirtualWorld(destination));
+    SetPlayerPos(targetid, x + 1.5, y, z + 0.3);
+    SetCameraBehindPlayer(targetid);
+
+    new destName[MAX_PLAYER_NAME], targetName[MAX_PLAYER_NAME], message[128];
+    GetPlayerName(destination, destName, sizeof(destName));
+    GetPlayerName(targetid, targetName, sizeof(targetName));
+    format(message, sizeof(message), "[ADMIN]: Teleportovali ste %s do %s.", targetName, destName);
+    SendClientMessage(playerid, 0x00BFFFFF, message);
+    format(message, sizeof(message), "[ADMIN]: Teleportovani ste do %s.", destName);
+    SendClientMessage(targetid, 0x00BFFFFF, message);
+    return 1;
+}
+
+CMD:kill(playerid, params[])
+{
+    if(!HasAdminCommandAccess(playerid))
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Samo admin moze koristiti /kill.");
+    new targetid, reason[80];
+    if(sscanf(params, "us[80]", targetid, reason))
+        return SendClientMessage(playerid, 0xAFAFAFFF, "KORISTI: /kill [ID/Ime] [Razlog]");
+    if(!IsPlayerConnected(targetid))
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Igrac nije online.");
+    if(GetPlayerState(targetid) == PLAYER_STATE_WASTED || GetPlayerState(targetid) == PLAYER_STATE_NONE)
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Igrac je vec mrtav ili nije spawnovan.");
+    new adminName[MAX_PLAYER_NAME], targetName[MAX_PLAYER_NAME], message[144];
+    GetPlayerName(playerid, adminName, sizeof(adminName));
+    GetPlayerName(targetid, targetName, sizeof(targetName));
+    format(message, sizeof(message), "[ADMIN]: %s je ubio igraca %s. Razlog: %s", adminName, targetName, reason);
+    SendClientMessageToAll(0xFF7777FF, message);
+    SetPlayerHealth(targetid, 0.0);
+    return 1;
+}
+
+CMD:setskin(playerid, params[])
+{
+    if(!HasAdminCommandAccess(playerid))
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Samo admin moze koristiti /setskin.");
+    new targetid, skinid;
+    if(sscanf(params, "ui", targetid, skinid))
+        return SendClientMessage(playerid, 0xAFAFAFFF, "KORISTI: /setskin [ID/Ime] [ID Skina]");
+    if(!IsPlayerConnected(targetid) || !GetPVarInt(targetid, "BR_LoggedIn"))
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Igrac nije prijavljen i online.");
+    if(skinid < 0 || skinid > 311 || skinid == 74)
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Validni skinovi su 0-311, osim ID 74.");
+    if(GetPlayerState(targetid) != PLAYER_STATE_ONFOOT || IsPlayerInAnyVehicle(targetid))
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Igrac mora biti ziv i van vozila za promjenu skina.");
+    new name[MAX_PLAYER_NAME], file[128], message[128];
+    GetPlayerName(targetid, name, sizeof(name));
+    format(file, sizeof(file), "Korisnici/%s.ini", name);
+    if(!DOF2_FileExists(file))
+        return SendClientMessage(playerid, 0xFF0000FF, "GRESKA: Nalog igraca nije pronadjen.");
+    if(GetPlayerSpecialAction(targetid) == SPECIAL_ACTION_DUCK)
+    {
+        new Float:x, Float:y, Float:z;
+        GetPlayerPos(targetid, x, y, z);
+        SetPlayerPos(targetid, x, y, z);
+    }
+    ClearAnimations(targetid);
+    SetPlayerSkin(targetid, skinid);
+    PlayerCurrentSkin[targetid] = skinid;
+    DOF2_SetInt(file, "Skin", skinid);
+    DOF2_SaveFile();
+    format(message, sizeof(message), "[ADMIN]: Postavili ste skin %d igracu %s.", skinid, name);
+    SendClientMessage(playerid, 0x00BFFFFF, message);
+    format(message, sizeof(message), "[ADMIN]: Vas skin je postavljen na ID %d.", skinid);
+    SendClientMessage(targetid, 0x00BFFFFF, message);
+    return 1;
+}
+
 CMD:slap(playerid, params[])
 {
     new file[128], ime[MAX_PLAYER_NAME];
@@ -6011,7 +8344,7 @@ CMD:slap(playerid, params[])
     if(sscanf(params, "us[128]", targetid, razlog)) return SendClientMessage(playerid, 0xAFAFAFFF, "KORISTI: /slap [ID/DeoImena] [Razlog]");
 
     if(!IsPlayerConnected(targetid)) return SendClientMessage(playerid, 0xFF0000FF, "Taj igrac trenutno nije na serveru.");
-    if(targetid == playerid) return SendClientMessage(playerid, 0xFF0000FF, "Ne mozete ošamariti sami sebe!");
+    // Admin moze koristiti /slap i na sebi.
 
     new targetName[MAX_PLAYER_NAME], adminName[MAX_PLAYER_NAME];
     GetPlayerName(targetid, targetName, sizeof(targetName));
@@ -7819,6 +10152,42 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
     }
     return 1;
 }
+CMD:givegun(playerid, params[])
+{
+    new file[128], ime[MAX_PLAYER_NAME];
+    GetPlayerName(playerid, ime, sizeof(ime));
+    format(file, sizeof(file), "Korisnici/%s.ini", ime);
+
+    if(!GetPVarInt(playerid, "BR_LoggedIn") && !IsPlayerAdmin(playerid))
+        return SendClientMessage(playerid, -1, "{FF0000}[GRESKA]: {FFFFFF}Prvo se prijavite na nalog.");
+
+    new admin_rank = 0;
+    if(DOF2_FileExists(file)) admin_rank = DOF2_GetInt(file, "Admin");
+    if(!IsPlayerAdmin(playerid) && (admin_rank < 6 || admin_rank > 9))
+        return SendClientMessage(playerid, -1, "{FF0000}[GRESKA]: {FFFFFF}Za /givegun je potreban admin rank 6-9 ili RCON admin.");
+
+    new targetid, weaponid, ammo;
+    if(sscanf(params, "ddd", targetid, weaponid, ammo))
+        return SendClientMessage(playerid, -1, "{FF0000}[KORISTENJE]: {FFFFFF}/givegun [ID Igraca] [ID Oruzja] [Metci]");
+
+    if(targetid < 0 || targetid >= MAX_PLAYERS || !IsPlayerConnected(targetid))
+        return SendClientMessage(playerid, -1, "{FF0000}[GRESKA]: {FFFFFF}Taj igrac nije online!");
+    if(weaponid < 0 || weaponid > 46)
+        return SendClientMessage(playerid, -1, "{FF0000}[GRESKA]: {FFFFFF}ID oruzja mora biti izmedu 0 i 46!");
+    if(ammo < 1 || ammo > 9999)
+        return SendClientMessage(playerid, -1, "{FF0000}[GRESKA]: {FFFFFF}Kolicina metaka mora biti izmedu 1 i 9999!");
+
+    GivePlayerWeapon(targetid, weaponid, ammo);
+
+    new targetname[MAX_PLAYER_NAME], s_msg[128];
+    GetPlayerName(targetid, targetname, sizeof(targetname));
+    format(s_msg, sizeof(s_msg), "{33CCFF}[ADMIN]: {FFFFFF}Uspjesno ste dali oruzje (ID: %d) igracu %s sa %d metaka.", weaponid, targetname, ammo);
+    SendClientMessage(playerid, -1, s_msg);
+    format(s_msg, sizeof(s_msg), "{33CCFF}[ADMIN]: {FFFFFF}Admin vam je dodijelio oruzje (ID: %d) sa %d metaka.", weaponid, ammo);
+    SendClientMessage(targetid, -1, s_msg);
+    return 1;
+}
+
 CMD:givemoney(playerid, params[]) // Dodane uglaste zagrade [] ako je params niz u tvom modu!
 {
     // Provera admin levela (9+) ili RCON-a
@@ -7991,36 +10360,21 @@ CMD:fix(playerid, params[])
 {
     if(!VehicleCommandAdmin(playerid))
         return SendClientMessage(playerid, 0xFF0000FF, "[VOZILO]: Ovu komandu mogu koristiti samo admini.");
-    if(!IsPlayerInAnyVehicle(playerid))
-        return SendClientMessage(playerid, 0xFF0000FF, "[VOZILO]: Morate sjediti u vozilu.");
-
-    new vehicleid = GetPlayerVehicleID(playerid);
-    if(!RepairVehicle(vehicleid))
-        return SendClientMessage(playerid, 0xFF0000FF, "[VOZILO]: Popravka vozila nije uspjela.");
-    SendClientMessage(playerid, 0x00BFFFFF, "[VOZILO]: Vozilo je popravljeno.");
-    return 1;
-}
-
-CMD:afix(playerid, params[])
-{
-    if(!VehicleCommandAdmin(playerid))
-        return SendClientMessage(playerid, 0xFF0000FF, "[VOZILO]: Ovu komandu mogu koristiti samo admini.");
     new targetid;
-    if(sscanf(params, "u", targetid))
-        return SendClientMessage(playerid, 0x00BFFFFF, "Koristenje: /afix [ID/Ime igraca]");
-    if(!IsPlayerConnected(targetid))
-        return SendClientMessage(playerid, 0xFF0000FF, "[VOZILO]: Igrac nije na serveru.");
+    if(sscanf(params, "u", targetid) || !IsPlayerConnected(targetid))
+        return SendClientMessage(playerid, 0x00BFFFFF, "Koristenje: /fix [ID/Ime igraca]");
     if(!IsPlayerInAnyVehicle(targetid))
         return SendClientMessage(playerid, 0xFF0000FF, "[VOZILO]: Taj igrac nije u vozilu.");
 
     new vehicleid = GetPlayerVehicleID(targetid);
-    if(!RepairVehicle(vehicleid))
+    if(!VehicleHudRepair(vehicleid))
         return SendClientMessage(playerid, 0xFF0000FF, "[VOZILO]: Popravka vozila nije uspjela.");
-    SendClientMessage(playerid, 0x00BFFFFF, "[VOZILO]: Vozilo igraca je popravljeno.");
+    SendClientMessage(playerid, 0x00BFFFFF, "[VOZILO]: Vozilo je popravljeno.");
     if(targetid != playerid)
         SendClientMessage(targetid, 0x00BFFFFF, "[VOZILO]: Admin je popravio vozilo u kojem sjedite.");
     return 1;
 }
+
 CMD:artcveh(playerid, params[])
 {
     if(!VehicleCommandAdmin(playerid))
@@ -8058,7 +10412,7 @@ CMD:afixveh(playerid, params[])
         return SendClientMessage(playerid, 0x00BFFFFF, "Koristenje: /afixveh [ID vozila iz /dl]");
     if(vehicleid < 1 || vehicleid >= MAX_VEHICLES || GetVehicleModel(vehicleid) == 0)
         return SendClientMessage(playerid, 0xFF0000FF, "[VOZILO]: Vozilo s tim ID-om ne postoji.");
-    if(!RepairVehicle(vehicleid))
+    if(!VehicleHudRepair(vehicleid))
         return SendClientMessage(playerid, 0xFF0000FF, "[VOZILO]: Popravka vozila nije uspjela.");
 
     new message[128];
@@ -8475,9 +10829,7 @@ public OnPlayerEnterCheckpoint(playerid)
                 DOF2_SaveFile();
 
 				// --- OVDJE DODAJ OVO ISPOD ---
-				new td_string[32];
-				format(td_string, sizeof(td_string), "BANKA: %d RSD", novo_stanje_banka);
-				PlayerTextDrawSetString(playerid, TD_NovacPlavi[playerid], td_string);
+                UpdateBankaTD(playerid, novo_stanje_banka);
 				// -----------------------------
 
                 new dialog_string[512];
@@ -9011,7 +11363,8 @@ public GladSystemTimer()
 forward ServerTipsTimer();
 public ServerTipsTimer()
 {
-    new random_tip = random(29); // Bira nasumican broj od 0 do 28
+    new random_tip = random(29); // Isti savjet u chatu i na HUD-u, svakih 5 minuta.
+    UpdateHudTip(random_tip);
 
     switch(random_tip)
     {
@@ -9291,8 +11644,24 @@ CMD:engine(playerid, params)
     GetVehicleParamsEx(vehicleid, engine, lights, alarm, doors, bonnet, boot, objective);
 
     // Ako je motor ugašen (0 ili -1), palimo ga
-    if(engine == 0 || engine == -1)
+    if(engine == 0 || engine == -1 || VehicleHudStalled[vehicleid])
     {
+        VehicleHudInitData(vehicleid);
+        if(!VehicleHudNoFuel(GetVehicleModel(vehicleid)) && VehicleHudFuel[vehicleid] <= 0.0)
+            return SendClientMessage(playerid, 0xFF7777FF, "[GORIVO]: Nema goriva. Zaustavite vozilo i upisite /fill.");
+        new damage = VehicleHudDamageLevel(vehicleid);
+        if(damage == 5)
+            return SendClientMessage(playerid, 0xFF7777FF, "[VOZILO]: Kvarovi su 5/5. Motor se ne moze upaliti dok se vozilo ne popravi.");
+        if(damage == 4)
+        {
+            if(gettime() < VehicleHudNextStartTry[vehicleid])
+                return SendClientMessage(playerid, 0xFF7777FF, "[VOZILO]: Sacekajte nekoliko sekundi prije novog pokusaja paljenja.");
+            VehicleHudNextStartTry[vehicleid] = gettime() + 3;
+            if(random(100) >= 35)
+                return SendClientMessage(playerid, 0xFF7777FF, "[VOZILO]: Motor tesko pali zbog kvarova (4/5). Pokusajte ponovo.");
+            VehicleHudNextStallAt[vehicleid] = gettime() + 15 + random(11);
+        }
+        VehicleHudStalled[vehicleid] = false;
         SetVehicleParamsEx(vehicleid, 1, lights, alarm, doors, bonnet, boot, objective);
         SendClientMessage(playerid, 0x00FF00FF, "[SERVER]: Uspješno ste upalili motor vozila.");
     }
@@ -9358,11 +11727,123 @@ CMD:prekiniposao(playerid, params)
     SendClientMessage(playerid, 0xFF0000FF, "[SERVER]: Uspešno ste prekinuli poštansku turu.");
     return 1;
 }
+public OnPlayerUpdate(playerid)
+{
+    new nativeWanted = GetPlayerWantedLevel(playerid);
+    if(nativeWanted > 0 && GetPlayerState(playerid) != PLAYER_STATE_WASTED &&
+       GetPlayerState(playerid) != PLAYER_STATE_NONE && !IsHealing[playerid])
+    {
+        if(GetPVarInt(playerid, "BR_LoggedIn") && !IsHealing[playerid] && !PendingDeathFine[playerid] &&
+            nativeWanted > WantedPoints[playerid])
+        {
+            WantedPoints[playerid] = nativeWanted;
+            format(WantedReason[playerid], 64, "Ostali prekrsaj");
+            UpdateWantedHint(playerid);
+            new name[MAX_PLAYER_NAME], file[128];
+            GetPlayerName(playerid, name, sizeof(name));
+            format(file, sizeof(file), "Korisnici/%s.ini", name);
+            if(DOF2_FileExists(file))
+            {
+                DOF2_SetInt(file, "DosijeWanted", WantedPoints[playerid]);
+                DOF2_SetString(file, "DosijeRazlog", WantedReason[playerid]);
+                DOF2_SaveFile();
+            }
+        }
+        SetPlayerWantedLevel(playerid, 0);
+    }
+    if(JetpackDropGuardUntil[playerid])
+    {
+        if(gettime() >= JetpackDropGuardUntil[playerid]) JetpackDropGuardUntil[playerid] = 0;
+        else if(GetPlayerSpecialAction(playerid) == SPECIAL_ACTION_USEJETPACK)
+        {
+            RemoveJetpackClean(playerid);
+            JetpackDropGuardUntil[playerid] = 0;
+        }
+    }
+    if(BankHackPlayer == playerid && !BankHackerStillHere(playerid)) BankAbortHack();
+    BankCheckLaserForPlayer(playerid);
+    return 1;
+}
+stock ApplyPendingDeathPenalty(playerid, bool:notify)
+{
+    if(PendingDeathFine[playerid] <= 0) return 0;
+    new cash = GetPlayerMoney(playerid);
+    if(cash < 0) cash = 0;
+    new fine = PendingDeathFine[playerid];
+    if(fine > cash) fine = cash;
+    ResetPlayerMoney(playerid);
+    GivePlayerMoney(playerid, cash - fine);
+    PlayerInfo[playerid][pNovac] = cash - fine;
+    new name[MAX_PLAYER_NAME], file[128];
+    GetPlayerName(playerid, name, sizeof(name));
+    format(file, sizeof(file), "Korisnici/%s.ini", name);
+    if(DOF2_FileExists(file))
+    {
+        DOF2_SetInt(file, "Novac", PlayerInfo[playerid][pNovac]);
+        DOF2_SetInt(file, "DosijeWanted", 0);
+        DOF2_SetString(file, "DosijeRazlog", "Nema");
+        DOF2_SaveFile();
+    }
+    if(notify)
+    {
+        new message[128];
+        format(message, sizeof(message), "[SMRT]: Izgubili ste %d$ zbog %d Wanted Levela. Dosije je obrisan.", fine, PendingDeathWanted[playerid]);
+        SendClientMessage(playerid, 0xFF7777FF, message);
+    }
+    PendingDeathFine[playerid] = 0;
+    PendingDeathWanted[playerid] = 0;
+    return 1;
+}
+
+forward FinishDeathPenalty(playerid, serial);
+public FinishDeathPenalty(playerid, serial)
+{
+    if(!IsPlayerConnected(playerid) || serial != DeathPenaltySerial[playerid]) return 1;
+    ApplyPendingDeathPenalty(playerid, true);
+    return 1;
+}
+
+forward FinishSpawnWantedReset(playerid, serial);
+public FinishSpawnWantedReset(playerid, serial)
+{
+    if(!IsPlayerConnected(playerid) || serial != DeathPenaltySerial[playerid]) return 1;
+    new playerState = GetPlayerState(playerid);
+    if(playerState == PLAYER_STATE_WASTED || playerState == PLAYER_STATE_NONE) return 1;
+    SetPlayerWantedLevel(playerid, 0);
+    UpdateWantedHint(playerid);
+    return 1;
+}
+
 public OnPlayerDeath(playerid, killerid, reason)
 {
+    JetpackDropGuardUntil[playerid] = 0;
+    new wanted = WantedPoints[playerid];
+    if(GetPlayerWantedLevel(playerid) > wanted) wanted = GetPlayerWantedLevel(playerid);
+    WantedPoints[playerid] = 0;
+    format(WantedReason[playerid], 64, "Nema");
+    PendingDeathWanted[playerid] = wanted;
+    PendingDeathFine[playerid] = wanted * 1500;
+    // Ne salji wanted/textdraw RPC dok je igrac u stanju smrti.
+    new name[MAX_PLAYER_NAME], file[128];
+    GetPlayerName(playerid, name, sizeof(name));
+    format(file, sizeof(file), "Korisnici/%s.ini", name);
+    if(DOF2_FileExists(file))
+    {
+        DOF2_SetInt(file, "DosijeWanted", 0);
+        DOF2_SetString(file, "DosijeRazlog", "Nema");
+        DOF2_SaveFile();
+    }
+    if(BankHackPlayer == playerid) BankAbortHack();
+    if(BankRobber == playerid) BankAbortRobbery(true);
+    if(BankMoneyBag[playerid]) RemovePlayerAttachedObject(playerid, 9);
+    BankMoneyBag[playerid] = false;
     ScriptJetpack[playerid] = false;
     IsHealing[playerid] = true;
     PlayerCurrentSkin[playerid] = GetPlayerSkin(playerid); // Pamtimo skin prije smrti
+    if(PlayerCurrentSkin[playerid] < 0 || PlayerCurrentSkin[playerid] > 311 || PlayerCurrentSkin[playerid] == 74)
+        PlayerCurrentSkin[playerid] = 26;
+    // Server spawna igraca direktno u bolnici sa istim skinom.
+    SetSpawnInfo(playerid, 0, PlayerCurrentSkin[playerid], -20.6776, 1481.3562, -3.3132, 179.0601, 0, 0, 0, 0, 0, 0);
     return 1;
 }
 forward ZavrsiLecenje(playerid);
@@ -9594,7 +12075,7 @@ stock ShowAH(playerid)
     strcat(text, "/inventory /buyinventory /kupi /smsad /napravioglase\n", sizeof(text));
     strcat(text, "/editujoglase /obrisioglase /napravizlataru /editujzlataru /obrisizlataru\n", sizeof(text));
     strcat(text, "/kupizlato /prodajzlato /kupisat /time /setleader\n", sizeof(text));
-    strcat(text, "/slap /l /gethere /b /me\n", sizeof(text));
+    strcat(text, "/slap /goto /kill /setskin /l /gethere /b /me\n", sizeof(text));
     strcat(text, "/do /member /invite /uninvite /orghelp\n", sizeof(text));
     strcat(text, "/kazniclana /napravitrafiku /editujtrafiku /obrisitrafiku /kreirajobjekat\n", sizeof(text));
     strcat(text, "/editujobjekt /obrisiobjekat /trafika /kreirajlabeltrafika /obrisilabeltrafika\n", sizeof(text));
@@ -9604,9 +12085,9 @@ stock ShowAH(playerid)
     strcat(text, "/posao /otkaz /jobhelp /engine /dovezipostu\n", sizeof(text));
     strcat(text, "/prekiniposao /sethealth /setarmour /uninviteme /stablo\n", sizeof(text));
     strcat(text, "/sethour /setminute /ah /name /setadmincode\n", sizeof(text));
-    strcat(text, "/rtc /artc /fix /afix\n", sizeof(text));
+    strcat(text, "/rtc /artc /fix\n", sizeof(text));
     strcat(text, "/artcveh /afixveh /unrent /rentvehiclehelp\n", sizeof(text));
-    strcat(text, "/gotomarker\n", sizeof(text));
+    strcat(text, "/gotomarker /iskljucilasere /givegun /dajdinamit /resetbanku /postavidinamit /robbank\n", sizeof(text));
     ShowPlayerDialog(playerid, DIALOG_AH, DIALOG_STYLE_MSGBOX, "Sve komande", text, "Zatvori", "");
     return 1;
 }
